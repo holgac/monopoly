@@ -23,11 +23,64 @@ class GameState:
 	uninitialized = 0
 	starting = 1
 	player_turn = 2
+	terminated = 3
+	buy_property_prompt = 4
+
+class Board:
+	class TileType:
+		regular = 0
+		go = 1
+		chest = 2
+		income_tax = 3
+		just_visiting = 4
+		free_parking = 5
+		go_to_jail = 6
+	class TilePositions:
+		chests = [2, 7, 17, 22, 33, 36]
+		go = 0
+		income_tax = 4
+		just_visiting = 10
+		free_parking = 20
+		go_to_jail = 30
+
+	tiles = ["=== GO ===", "Mediterranean ave. (P)", "Community Chest i",
+		"Baltic ave. (P)", "Income Tax", "Reading RR", "Oriental ave. (L)",
+		"Chance i", "Vermont ave. (L)", "Connecticut ave. (L)", "Just Visiting",
+		"St. Charles pl. (V)", "Electric Co.", "States ave. (V)", "Virginia ave. (V)",
+		"Pennsylvania RR", "St. James pl. (O)", "Community Chest ii",
+		"Tennessee ave. (O)", "New York ave. (O)", "Free Parking",
+		"Kentucky ave. (R)", "Chance ii", "Indiana ave. (R)", "Illinois ave. (R)",
+		"B&O RR", "Atlantic ave. (Y)", "Ventnor ave. (Y)", "Water Works",
+		"Marvin Gardens (Y)", "GO TO JAIL", "Pacific ave. (G)",
+		"N. Carolina ave. (G)", "Community Chest iii", "Pennsylvania ave. (G)",
+		"Short Line RR", "Chance iii", "Park place (D)", "Luxury Tax",
+		"Boardwalk (D)", "JAIL"]
+
+	@staticmethod
+	def get_tile_type(tile_name):
+		try:
+			idx = Board.tiles.index(tile_name)
+			if idx in Board.TilePositions.chests:
+				return Board.TileType.chest
+			if idx == Board.TilePositions.go:
+				return Board.TileType.go
+			if idx == Board.TilePositions.income_tax:
+				return Board.TileType.income_tax
+			if idx == Board.TilePositions.just_visiting:
+				return Board.TileType.just_visiting
+			if idx == Board.TilePositions.free_parking:
+				return Board.TileType.free_parking
+			if idx == Board.TilePositions.go_to_jail:
+				return Board.TileType.go_to_jail
+			return Board.TileType.regular
+		except ValueError, e:
+			raise AssertionError('No tile named' + tile_name)
 
 class Event:
 	class EventType:
 		start_game = 0
 		roll_die_first_time = 1
+		roll_die = 1
 	def __init__(self, event_type):
 		self.event_type = event_type
 	@staticmethod
@@ -92,15 +145,52 @@ class RollDieForTheFirstTimeEvent(Event):
 
 class RollDieEvent(Event):
 	def __init__(self):
-		Event.__init__(self, Event.EventType.roll_dice)
+		Event.__init__(self, Event.EventType.roll_die)
 	def run(self, monopoly):
 		monopoly.expect_state(GameState.player_turn)
+		# consume 'player (<cash>) <tile>'
+		monopoly.get_line()
 		# consume 'command: '
 		monopoly.get_line()
 		monopoly.write('roll')
 		# get "roll is x, y"
 		die = monopoly.get_line().split()[2:]
+		# print die
 		# get rid of comma and make tuple
 		die = (int(die[0][:-1]), int(die[1]))
+		re_template = "That puts you on ([A-Za-z \(\)\.\=&]+)"
+		inp = monopoly.get_line()
+		m = re.match(re_template, inp)
+		assert(m)
+		tile_type = Board.get_tile_type(m.group(1))
+		response = {}
+		response['die'] = die
+		response['tile_type'] = tile_type
+		response['location'] = m.group(1)
+		next_state = GameState.player_turn
+		# TODO: fill
+		if tile_type == Board.TileType.regular:
+			re_template = 'That would cost \$([0-9]+)'
+			inp = monopoly.get_line()
+			m = re.match(re_template, inp)
+			# TODO: handle owned property
+			assert(m)
+			response['cost'] = int(m.group(1))
+			monopoly.expect_input('Do you want to buy? ')
+			monopoly.state = GameState.buy_property_prompt
+			return EventResponse(self, response)
+		raise AssertionError('Unhandled tile type: ' + json.dumps(response))
+		# elif tile_type == Board.TileType.go:
+		# 	pass
+		# elif tile_type == Board.TileType.chest:
+		# 	pass
+		# elif tile_type == Board.TileType.income_tax:
+		# 	pass
+		# elif tile_type == Board.TileType.just_visiting:
+		# 	pass
+		# elif tile_type == Board.TileType.free_parking:
+		# 	pass
+		# elif tile_type == Board.TileType.go_to_jail:
+		# 	pass
 
 

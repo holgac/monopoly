@@ -25,6 +25,7 @@ class BufferedReader:
 	def __init__(self, infile):
 		self.infile = infile
 		self.cur_buffer = []
+		self.consumed_buffer = []
 	def _read_raw(self, block):
 		if block:
 			while True:
@@ -48,10 +49,16 @@ class BufferedReader:
 					self.cur_buffer.append(i)
 	def get_line(self, block):
 		if self.cur_buffer:
-			return self.cur_buffer.pop(0)
+			# for debug purposes
+			v = self.cur_buffer.pop(0)
+			self.consumed_buffer.append(v)
+			return v
 		self._read_lines(block)
 		if self.cur_buffer:
-			return self.cur_buffer.pop(0)
+			# for debug purposes
+			v = self.cur_buffer.pop(0)
+			self.consumed_buffer.append(v)
+			return v
 		return None
 
 class Monopoly:
@@ -84,6 +91,11 @@ class Monopoly:
 			return event.run(self)
 		except AssertionError, e:
 			traceback.print_exc()
+			print 'Consumed lines: '
+			self.inp_reader._read_lines(False)
+			print '\n\t'.join(self.inp_reader.consumed_buffer)
+			print 'Next lines: '
+			print '\n\t'.join(self.inp_reader.cur_buffer)
 			# assertion errors should be more descriptive
 			return events.EventResponse(event, None, False)
 
@@ -93,8 +105,10 @@ def main():
 	print m.handle_event(events.StartGameEvent(['ahmet', 'mehmet', 'cemil', 'asd', 'bsd', 'csd', 'dsd', 'esd', 'fsd']))
 	r = m.handle_event(events.RollDieForTheFirstTimeEvent())
 	while not r.success:
+		print r
 		r = m.handle_event(events.RollDieForTheFirstTimeEvent())
 	print r
+	print m.handle_event(events.RollDieEvent())
 	m.proc.kill()
 
 if __name__ == '__main__':
