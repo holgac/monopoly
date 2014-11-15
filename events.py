@@ -1,3 +1,21 @@
+# Monopoly
+# Copyright (C) 2014 Emre Deniz Ozer & Huseyin Muhlis Olgac
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+
 import pty, tty, os, threading, subprocess, sys, fcntl, re
 import itertools, json, traceback
 
@@ -9,7 +27,7 @@ class GameState:
 class Event:
 	class EventType:
 		start_game = 0
-		roll_dice_first_time = 1
+		roll_die_first_time = 1
 	def __init__(self, event_type):
 		self.event_type = event_type
 	@staticmethod
@@ -17,7 +35,7 @@ class Event:
 		# Factory method with event registration would be nice
 		if event_type == Event.EventType.start_game:
 			return StartGameEvent()
-		if event_type == Event.EventType.roll_dice_first_time:
+		if event_type == Event.EventType.roll_die_first_time:
 			return RollDiceEvent()
 
 class EventResponse:
@@ -48,7 +66,7 @@ class StartGameEvent(Event):
 
 class RollDieForTheFirstTimeEvent(Event):
 	def __init__(self):
-		Event.__init__(self, Event.EventType.roll_dice_first_time)
+		Event.__init__(self, Event.EventType.roll_die_first_time)
 	def run(self, monopoly):
 		monopoly.expect_state(GameState.starting)
 		die = {}
