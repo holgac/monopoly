@@ -189,11 +189,18 @@ class RollDieEvent(Event):
 			# If owned by other ppl, message is:
 			# 		Owned by <NAME>
 			# 		rent is <INTEGER>
-			assert(m)
-			response['cost'] = int(m.group(1))
-			monopoly.expect_input('Do you want to buy? ')
-
-			monopoly.state = GameState.buy_property_prompt
+			if m:
+				response['cost'] = int(m.group(1))
+				monopoly.expect_input('Do you want to buy? ')
+				monopoly.state = GameState.buy_property_prompt
+			else:
+				monopoly.expect_input('Owned by .*')
+				re_template = 'rent is ([0-9]+)'
+				inp = monopoly.get_line()
+				m = re.match(re_template, inp)
+				assert(m)
+				response['rent'] = int(m.group(1))
+				monopoly.end_turn()
 		# elif tile_type == Board.TileType.go:
 		# 	pass
 		elif tile_type == Board.TileType.chest:

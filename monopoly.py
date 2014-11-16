@@ -48,18 +48,19 @@ class BufferedReader:
 				if i:
 					self.cur_buffer.append(i)
 	def get_line(self, block):
+		st = self.peek_line(block)
+		if st:
+			self.cur_buffer.pop(0)
+			self.consumed_buffer.append(st)
+		return st
+	def peek_line(self, block):
 		if self.cur_buffer:
-			# for debug purposes
-			v = self.cur_buffer.pop(0)
-			self.consumed_buffer.append(v)
-			return v
+			return self.cur_buffer[0]
 		self._read_lines(block)
 		if self.cur_buffer:
-			# for debug purposes
-			v = self.cur_buffer.pop(0)
-			self.consumed_buffer.append(v)
-			return v
+			return self.cur_buffer[0]
 		return None
+
 
 class Monopoly:
 	def __init__(self):
