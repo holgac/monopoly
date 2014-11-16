@@ -73,6 +73,7 @@ class Monopoly:
 		self.players = None
 		self.next_player = -1
 		self.inp_reader = BufferedReader(self.proc.stdout)
+		self.last_die = None
 	def get_line(self, block=True):
 		return self.inp_reader.get_line(block)
 
@@ -101,9 +102,19 @@ class Monopoly:
 			print '#\n\t'.join(self.inp_reader.consumed_buffer)
 			print 'Next lines: '
 			print '#\n\t'.join(self.inp_reader.cur_buffer)
+			print 'State: ' + events.GameState.state_names[self.state]
+			print 'Next Player: {0} {1}'.format(self.next_player,
+				self.players[self.next_player])
 			# assertion errors should be more descriptive
 			return events.EventResponse(event, None, False, self.state,
 				(self.next_player, self.players[self.next_player]))
+	def end_turn(self):
+		if self.last_die[0] == self.last_die[1]:
+			self.expect_input('{0} rolled doubles.  Goes again'.format(
+				self.players[self.next_player]))
+		else:
+			self.next_player = (self.next_player + 1) % len(self.players)
+		self.last_die = None
 
 
 def main():
@@ -114,7 +125,16 @@ def main():
 		print r
 		r = m.handle_event(events.RollDieForTheFirstTimeEvent())
 	print r
-	print m.handle_event(events.RollDieEvent())
+	while True:
+		r = m.handle_event(events.RollDieEvent())
+		print r
+		if r.new_state == events.GameState.buy_property_prompt:
+			r = m.handle_event(events.BuyPropertyResponseEvent(True))
+		else:
+			# sending wrong event just to see the inputs
+			m.handle_event(events.RollDieForTheFirstTimeEvent())
+		print r
+		raw_input()
 	m.proc.kill()
 
 if __name__ == '__main__':

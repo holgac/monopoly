@@ -89,7 +89,8 @@ class Event:
 	class EventType:
 		start_game = 0
 		roll_die_first_time = 1
-		roll_die = 1
+		roll_die = 2
+		buy_property = 3
 	def __init__(self, event_type):
 		self.event_type = event_type
 	@staticmethod
@@ -180,18 +181,19 @@ class RollDieEvent(Event):
 		response['die'] = die
 		response['tile_type'] = tile_type
 		response['location'] = m.group(1)
-		next_state = GameState.player_turn
-		# TODO: fill
 		if tile_type == Board.TileType.regular:
 			re_template = 'That would cost \$([0-9]+)'
 			inp = monopoly.get_line()
 			m = re.match(re_template, inp)
 			# TODO: handle owned property
+			# If owned by other ppl, message is:
+			# 		Owned by <NAME>
+			# 		rent is <INTEGER>
 			assert(m)
 			response['cost'] = int(m.group(1))
 			monopoly.expect_input('Do you want to buy? ')
+
 			monopoly.state = GameState.buy_property_prompt
-			return EventResponse(self, response)
 		# elif tile_type == Board.TileType.go:
 		# 	pass
 		elif tile_type == Board.TileType.chest:
@@ -208,12 +210,28 @@ class RollDieEvent(Event):
 			monopoly.state = GameState.income_tax_prompt
 		elif tile_type == Board.TileType.just_visiting:
 			monopoly.expect_input('That is a safe place')
+			monopoly.end_turn()
 		# elif tile_type == Board.TileType.free_parking:
 		# 	pass
 		# elif tile_type == Board.TileType.go_to_jail:
 		# 	pass
 		else:
 			raise AssertionError('Unhandled tile type: ' + json.dumps(response))
+		monopoly.last_die = die
 		return EventResponse(self, response)
+
+class BuyPropertyResponseEvent(Event):
+	def __init__(self, response):
+		Event.__init__(self, Event.EventType.buy_property)
+		self.response = response
+	def run(self, monopoly):
+		monopoly.expect_state(GameState.buy_property_prompt)
+		if self.response:
+			monopoly.write('yes')
+			monopoly.state = GameState.player_turn
+			monopoly.end_turn()
+		else:
+			raise AssertionError('Unhandled state response!')
+		return EventResponse(self, None, True)
 
 
