@@ -18,7 +18,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import pty, tty, os, threading, subprocess, sys, fcntl, re
-import itertools, json, traceback
+import itertools, json, traceback, datetime
 import events
 
 class BufferedReader:
@@ -28,8 +28,12 @@ class BufferedReader:
 		self.consumed_buffer = []
 	def _read_raw(self, block):
 		if block:
+			start_time = datetime.datetime.now()
 			while True:
 				try:
+					diff = datetime.datetime.now() - start_time
+					if diff.total_seconds() > 3:
+						raise AssertionError('No input for 3 seconds!')
 					return self.infile.read()
 					# s =  self.infile.read()
 					# print 'read ' + s
@@ -104,6 +108,8 @@ class Monopoly:
 	def write(self, buf):
 		self.proc.stdin.write(buf + '\n')
 	def handle_event(self, event):
+
+		print 'handling ' + event.__class__.__name__
 		try:
 			response =  event.run(self)
 			response.new_state = self.state
@@ -120,6 +126,7 @@ class Monopoly:
 			print 'Next Player: {0} {1}'.format(self.next_player,
 				self.players[self.next_player])
 			# assertion errors should be more descriptive
+			raw_input()
 			return events.EventResponse(event, None, False, self.state,
 				(self.next_player, self.players[self.next_player]))
 	def end_turn(self):
@@ -129,7 +136,7 @@ class Monopoly:
 		else:
 			self.next_player = (self.next_player + 1) % len(self.players)
 		self.last_die = None
-	def handle_tile_visit(self):
+	def handle_tile_visit(self, debug=False):
 		response = {}
 		if self.peek_line() == 'You pass === GO === and get $200':
 			self.get_line()
@@ -175,9 +182,6 @@ class Monopoly:
 		elif tile_type == events.Board.TileType.luxury_tax:
 			self.expect_input('You lose $75')
 			self.end_turn()
-		elif tile_type == events.Board.TileType.free_parking:
-			self.expect_input('That is a safe place')
-			self.end_turn()
 		# elif tile_type == Board.TileType.go_to_jail:
 		# 	pass
 		else:
@@ -197,25 +201,23 @@ def main():
 		r = m.handle_event(events.RollDieForTheFirstTimeEvent())
 	print r
 	while True:
-		r = m.handle_event(events.RollDieEvent())
-		print r
-		if not r.success:
-			raw_input()
-		if r.new_state == events.GameState.buy_property_prompt:
-			r = m.handle_event(events.BuyPropertyResponseEvent(True))
-		elif r.new_state == events.GameState.income_tax_prompt:
-			r = m.handle_event(events.IncomeTaxResponseEvent(False))
-		elif r.new_state == events.GameState.player_turn:
-			pass
-		elif r.new_state == events.GameState.open_card_prompt:
-			r = m.handle_event(events.OpenCardEvent())
-		else:
-			# sending wrong event just to see the inputs
-			m.handle_event(events.RollDieForTheFirstTimeEvent())
-		if r.new_state != events.GameState.player_turn:
-			print '------------------------------------'
+		if r.new_state == events.GameState.player_turn:
+			r = m.handle_event(events.RollDieEvent())
 			print r
-		print '------------------------------------'
+			print '------------------------------------'
+		else:
+			if r.new_state == events.GameState.buy_property_prompt:
+				r = m.handle_event(events.BuyPropertyResponseEvent(True))
+			elif r.new_state == events.GameState.income_tax_prompt:
+				r = m.handle_event(events.IncomeTaxResponseEvent(False))
+			elif r.new_state == events.GameState.open_card_prompt:
+				r = m.handle_event(events.OpenCardEvent())
+			else:
+				# sending wrong event just to see the inputs
+				r = m.handle_event(events.RollDieForTheFirstTimeEvent())
+			print r
+			print '------------------------------------'
+
 		if not r.success:
 			raw_input()
 	m.proc.kill()

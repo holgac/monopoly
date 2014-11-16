@@ -27,7 +27,8 @@ class Cards:
 		'Take a Ride on the Reading.',
 		'Take a Walk on the Board Walk.',
 		'Advance to Illinois Ave.',
-		'Advance to St. Charles Place.'
+		'Advance to St. Charles Place.',
+		'Advance to Go'
 	]
 	extra_msgs = {
 		'Make general repairs on all of your Property.':1,
@@ -39,6 +40,9 @@ class Cards:
 	@staticmethod
 	def extra_msg_count(message_list):
 		try:
-			return extra_msgs[message_list[0]]
+			print '->\tmessage_list[0]: ' + message_list[0]
+			v = extra_msgs[message_list[0]]
+			print '->\tExtra messages: ' + str(v)
+			return v
 		except Exception, e:
 			return 0

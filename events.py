@@ -43,7 +43,6 @@ class GameState:
 class Board:
 	class TileType:
 		regular = 0
-		go = 1
 		chest = 2
 		income_tax = 3
 		safe_place = 4
@@ -51,7 +50,6 @@ class Board:
 		luxury_tax = 6
 		tile_names = {
 			regular:'regular',
-			go:'go',
 			chest:'chest',
 			income_tax:'income_tax',
 			safe_place:'safe_place',
@@ -60,9 +58,8 @@ class Board:
 		}
 	class TilePositions:
 		chests = [2, 7, 17, 22, 33, 36]
-		go = 0
 		income_tax = 4
-		safe_places = [10, 20]
+		safe_places = [0, 10, 20]
 		go_to_jail = 30
 		luxury_tax = 38
 
@@ -85,8 +82,6 @@ class Board:
 			idx = Board.tiles.index(tile_name)
 			if idx in Board.TilePositions.chests:
 				return Board.TileType.chest
-			if idx == Board.TilePositions.go:
-				return Board.TileType.go
 			if idx == Board.TilePositions.income_tax:
 				return Board.TileType.income_tax
 			if idx in Board.TilePositions.safe_places:
@@ -238,16 +233,20 @@ class OpenCardEvent(Event):
 			inp = monopoly.get_line()
 		print 'card: \t' + str(message)
 		if cards.Cards.has_prompt(message):
-			response = monopoly.handle_tile_visit()
+			response = monopoly.handle_tile_visit(True)
 			response['message'] = message
-			monopoly.state = GameState.player_turn
+			response['state_name'] = GameState.state_names[monopoly.state]
 			return EventResponse(self, response, True)
 		else:
 			for _ in xrange(cards.Cards.extra_msg_count(message)):
+				print 'extra line: {0}'.format(monopoly.get_line())
+			response = {'message':message}
+			if monopoly.peek_line() == 'You pass === GO === and get $200':
 				monopoly.get_line()
+				response['passed_go'] = True
 			monopoly.end_turn()
 			monopoly.state = GameState.player_turn
-			return EventResponse(self, {'message':message}, True)
+			return EventResponse(self, response, True)
 
 class QuitEvent(Event):
 	def __init__(self):
