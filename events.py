@@ -44,6 +44,15 @@ class Board:
 		just_visiting = 4
 		free_parking = 5
 		go_to_jail = 6
+		tile_names = {
+			regular:'regular',
+			go:'go',
+			chest:'chest',
+			income_tax:'income_tax',
+			just_visiting:'just_visiting',
+			free_parking:'free_parking',
+			go_to_jail:'go_to_jail'
+		}
 	class TilePositions:
 		chests = [2, 7, 17, 22, 33, 36]
 		go = 0
@@ -179,8 +188,9 @@ class RollDieEvent(Event):
 		tile_type = Board.get_tile_type(m.group(1))
 		response = {}
 		response['die'] = die
-		response['tile_type'] = tile_type
+		response['tile_type'] = (tile_type, Board.TileType.tile_names[tile_type])
 		response['location'] = m.group(1)
+		monopoly.last_die = die
 		if tile_type == Board.TileType.regular:
 			re_template = 'That would cost \$([0-9]+)'
 			inp = monopoly.get_line()
@@ -194,7 +204,9 @@ class RollDieEvent(Event):
 				monopoly.expect_input('Do you want to buy? ')
 				monopoly.state = GameState.buy_property_prompt
 			else:
-				monopoly.expect_input('Owned by .*')
+				re_template = 'Owned by .*'
+				assert(re.match(re_template, inp))
+				# TODO: what if this property is owned by us?
 				re_template = 'rent is ([0-9]+)'
 				inp = monopoly.get_line()
 				m = re.match(re_template, inp)
@@ -218,13 +230,13 @@ class RollDieEvent(Event):
 		elif tile_type == Board.TileType.just_visiting:
 			monopoly.expect_input('That is a safe place')
 			monopoly.end_turn()
-		# elif tile_type == Board.TileType.free_parking:
-		# 	pass
+		elif tile_type == Board.TileType.free_parking:
+			monopoly.expect_input('That is a safe place')
+			monopoly.end_turn()
 		# elif tile_type == Board.TileType.go_to_jail:
 		# 	pass
 		else:
 			raise AssertionError('Unhandled tile type: ' + json.dumps(response))
-		monopoly.last_die = die
 		return EventResponse(self, response)
 
 class BuyPropertyResponseEvent(Event):
@@ -241,4 +253,20 @@ class BuyPropertyResponseEvent(Event):
 			raise AssertionError('Unhandled state response!')
 		return EventResponse(self, None, True)
 
+class IncomeTaxResponseEvent(Event):
+	def __init__(self, use_percentage):
+		Event.__init__(self, Event.EventType.buy_property)
+		self.use_percentage = use_percentage
+	def run(self, monopoly):
+		monopoly.expect_state(GameState.income_tax_prompt)
+		if self.use_percentage:
+			monopoly.write('10%')
+		else:
+			monopoly.write('200')
+		# Good guess.  Lucky person!
+		# You were worth $<INTEGER>. Good try, but not quite.
+		inp = monopoly.get_line()
+		monopoly.state = GameState.player_turn
+		monopoly.end_turn()
+		return EventResponse(self, None, True)
 

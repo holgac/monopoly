@@ -96,7 +96,7 @@ class Monopoly:
 			response.new_state = self.state
 			response.next_player = (self.next_player, self.players[self.next_player])
 			return response
-		except AssertionError, e:
+		except (AssertionError, IndexError, ValueError), e:
 			traceback.print_exc()
 			print 'Consumed lines: '
 			self.inp_reader._read_lines(False)
@@ -131,10 +131,15 @@ def main():
 		print r
 		if r.new_state == events.GameState.buy_property_prompt:
 			r = m.handle_event(events.BuyPropertyResponseEvent(True))
+		elif r.new_state == events.GameState.income_tax_prompt:
+			r = m.handle_event(events.IncomeTaxResponseEvent(False))
+		elif r.new_state == events.GameState.player_turn:
+			pass
 		else:
 			# sending wrong event just to see the inputs
 			m.handle_event(events.RollDieForTheFirstTimeEvent())
-		print r
+		if r.new_state != events.GameState.player_turn:
+			print r
 		raw_input()
 	m.proc.kill()
 
