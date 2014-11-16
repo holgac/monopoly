@@ -79,7 +79,9 @@ class Monopoly:
 	def expect_input(self, str_to_expect, is_regex=False):
 		inp = self.get_line(True)
 		if is_regex:
-			assert(re.match(str_to_expect, inp) != None)
+			m = re.match(str_to_expect, inp)
+			assert(m)
+			assert(len(m.group(0)) == len(inp))
 		else:
 			assert(str_to_expect == inp)
 	def expect_state(self, state):
@@ -88,16 +90,20 @@ class Monopoly:
 		self.proc.stdin.write(buf + '\n')
 	def handle_event(self, event):
 		try:
-			return event.run(self)
+			response =  event.run(self)
+			response.new_state = self.state
+			response.next_player = (self.next_player, self.players[self.next_player])
+			return response
 		except AssertionError, e:
 			traceback.print_exc()
 			print 'Consumed lines: '
 			self.inp_reader._read_lines(False)
-			print '\n\t'.join(self.inp_reader.consumed_buffer)
+			print '#\n\t'.join(self.inp_reader.consumed_buffer)
 			print 'Next lines: '
-			print '\n\t'.join(self.inp_reader.cur_buffer)
+			print '#\n\t'.join(self.inp_reader.cur_buffer)
 			# assertion errors should be more descriptive
-			return events.EventResponse(event, None, False)
+			return events.EventResponse(event, None, False, self.state,
+				(self.next_player, self.players[self.next_player]))
 
 
 def main():
