@@ -79,6 +79,7 @@ class Monopoly:
 		self.next_player = -1
 		self.inp_reader = BufferedReader(self.proc.stdout)
 		self.last_die = None
+		self.double_count = 0
 	def get_line(self, block=True):
 		return self.inp_reader.get_line(block)
 	def peek_line(self, block=True):
@@ -131,9 +132,14 @@ class Monopoly:
 				(self.next_player, self.players[self.next_player]))
 	def end_turn(self):
 		if self.last_die[0] == self.last_die[1]:
-			self.expect_input('{0} rolled doubles.  Goes again'.format(
-				self.players[self.next_player]))
+			self.double_count += 1
+			if self.double_count == 3:
+				self.expect_input('That\'s 3 doubles.  You go to jail')
+			else:
+				self.expect_input('{0} rolled doubles.  Goes again'.format(
+					self.players[self.next_player]))
 		else:
+			self.double_count = 0
 			self.next_player = (self.next_player + 1) % len(self.players)
 		self.last_die = None
 	def handle_tile_visit(self, debug=False):
@@ -157,6 +163,7 @@ class Monopoly:
 				self.expect_input('Do you want to buy?')
 				self.state = events.GameState.buy_property_prompt
 			else:
+				self.state = events.GameState.player_turn
 				if inp != 'You own it.':
 					re_template = 'Owned by .*'
 					assert(re.match(re_template, inp))
@@ -177,13 +184,16 @@ class Monopoly:
 			self.expect_input('Do you wish to lose 10%% of your total worth or $200?')
 			self.state = events.GameState.income_tax_prompt
 		elif tile_type == events.Board.TileType.safe_place:
+			self.state = events.GameState.player_turn
 			self.expect_input('That is a safe place')
 			self.end_turn()
 		elif tile_type == events.Board.TileType.luxury_tax:
+			self.state = events.GameState.player_turn
 			self.expect_input('You lose $75')
 			self.end_turn()
-		# elif tile_type == Board.TileType.go_to_jail:
-		# 	pass
+		elif tile_type == Board.TileType.go_to_jail:
+			self.state = events.GameState.player_turn
+			self.end_turn()
 		else:
 			raise AssertionError('Unhandled tile type: ' + json.dumps(response))
 		return response

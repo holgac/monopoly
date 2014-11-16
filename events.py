@@ -29,6 +29,7 @@ class GameState:
 	buy_property_prompt = 4
 	income_tax_prompt = 5
 	open_card_prompt = 6
+	in_jail = 7
 	state_names = {
 		uninitialized:'uninitialized',
 		starting:'starting',
@@ -36,7 +37,8 @@ class GameState:
 		terminated:'terminated',
 		buy_property_prompt:'buy_property_prompt',
 		income_tax_prompt:'income_tax_prompt',
-		open_card_prompt: 'open_card_prompt'
+		open_card_prompt: 'open_card_prompt',
+		in_jail: 'in_jail'
 	}
 
 # TODO: move to board.py
@@ -177,6 +179,11 @@ class RollDieEvent(Event):
 		monopoly.expect_input('{0} \({1}\) .*'.format(
 			monopoly.players[monopoly.next_player],
 			monopoly.next_player+1), True)
+		re_template = '\(This is your [0-3a-z]* turn in JAIL\)'
+		inp = monopoly.peek_line()
+		if re.match(re_template, inp):
+			monopoly.get_line()
+			monopoly.state = GameState.in_jail
 		monopoly.expect_input('-- Command:')
 		monopoly.write('roll')
 		# get "roll is x, y"
@@ -238,9 +245,16 @@ class OpenCardEvent(Event):
 			response['state_name'] = GameState.state_names[monopoly.state]
 			return EventResponse(self, response, True)
 		else:
-			for _ in xrange(cards.Cards.extra_msg_count(message)):
-				print 'extra line: {0}'.format(monopoly.get_line())
 			response = {'message':message}
+			if cards.Cards.extra_msg(message):
+				re_template = 'You had ([0-9]+) Houses and ([0-9]+) Hotels, so that cost you \$([0-9]+)'
+				st = monopoly.get_line()
+				m = re.match(re_template, st)
+				assert(m)
+				response['message'].append(st)
+				if int(m.group(3)) == 0:
+					# consume monop admiring our luck
+					monopoly.get_line()
 			if monopoly.peek_line() == 'You pass === GO === and get $200':
 				monopoly.get_line()
 				response['passed_go'] = True

@@ -28,21 +28,16 @@ class Cards:
 		'Take a Walk on the Board Walk.',
 		'Advance to Illinois Ave.',
 		'Advance to St. Charles Place.',
-		'Advance to Go'
+		'Advance to Go',
+		'Advance to GO'
 	]
-	extra_msgs = {
-		'Make general repairs on all of your Property.':1,
-		'You are Assessed for street repairs.':1
-	}
+	extra_msgs = [
+		'Make general repairs on all of your Property.',
+		'You are Assessed for street repairs.'
+	]
 	@staticmethod
 	def has_prompt(message_list):
 		return message_list[0] in Cards.prompt_msgs
 	@staticmethod
-	def extra_msg_count(message_list):
-		try:
-			print '->\tmessage_list[0]: ' + message_list[0]
-			v = extra_msgs[message_list[0]]
-			print '->\tExtra messages: ' + str(v)
-			return v
-		except Exception, e:
-			return 0
+	def extra_msg(message_list):
+		return message_list[0] in Cards.extra_msgs
