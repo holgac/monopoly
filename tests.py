@@ -31,17 +31,17 @@ class CreationTests(unittest.TestCase):
 		t = float(int(t*1000)/1000.0)
 		sys.stdout.write(' time: ' + str(t) + '  status: ')
 		sys.stdout.flush()
-	def test_creation(self):
+
+	def test_creation_and_termination(self):
 		m = monopoly.Monopoly()
 		self.assertTrue(m.state == events.GameState.uninitialized)
 		player_names = ['Mal', 'Zoe', 'Wash', 'Inara', 'Jayne',
-			'Kaylee', 'Simon', 'River', 'Shepherd']
+						'Kaylee', 'Simon', 'River', 'Shepherd']
 		e = events.StartGameEvent(player_names)
 		r = m.handle_event(e)
 		self.assertTrue(r.event == e)
 		self.assertTrue(r.success == True)
 		self.assertTrue(r.response == None)
-		self.assertTrue(m.state == events.GameState.starting)
 		roll_success = False
 		while not roll_success:
 			e = events.RollDieForTheFirstTimeEvent()
@@ -50,10 +50,15 @@ class CreationTests(unittest.TestCase):
 			roll_success = r.success
 		for p in player_names:
 			self.assertTrue(p in r.response)
-	def test_naber(self):
-		self.assertTrue(3 == 3)
-		self.assertTrue(4 < 3)
 
+		self.assertTrue(m.state == events.GameState.player_turn)
+
+		e = events.QuitEvent()
+		q = m.handle_event(e)
+		self.assertTrue(q.event == e)
+		self.assertTrue(q.success == True)
+		self.assertTrue(q.response == None)
+		self.assertTrue(m.state == events.GameState.terminated)
 
 if __name__ == '__main__':
 	import os

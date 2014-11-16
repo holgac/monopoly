@@ -18,7 +18,9 @@
 
 import pty, tty, os, threading, subprocess, sys, fcntl, re
 import itertools, json, traceback
+import cards
 
+# TODO: move to states.py
 class GameState:
 	uninitialized = 0
 	starting = 1
@@ -26,40 +28,43 @@ class GameState:
 	terminated = 3
 	buy_property_prompt = 4
 	income_tax_prompt = 5
+	open_card_prompt = 6
 	state_names = {
 		uninitialized:'uninitialized',
 		starting:'starting',
 		player_turn:'player_turn',
 		terminated:'terminated',
 		buy_property_prompt:'buy_property_prompt',
-		income_tax_prompt:'income_tax_prompt'
+		income_tax_prompt:'income_tax_prompt',
+		open_card_prompt: 'open_card_prompt'
 	}
 
+# TODO: move to board.py
 class Board:
 	class TileType:
 		regular = 0
 		go = 1
 		chest = 2
 		income_tax = 3
-		just_visiting = 4
-		free_parking = 5
-		go_to_jail = 6
+		safe_place = 4
+		go_to_jail = 5
+		luxury_tax = 6
 		tile_names = {
 			regular:'regular',
 			go:'go',
 			chest:'chest',
 			income_tax:'income_tax',
-			just_visiting:'just_visiting',
-			free_parking:'free_parking',
-			go_to_jail:'go_to_jail'
+			safe_place:'safe_place',
+			go_to_jail:'go_to_jail',
+			luxury_tax:'luxury_tax'
 		}
 	class TilePositions:
 		chests = [2, 7, 17, 22, 33, 36]
 		go = 0
 		income_tax = 4
-		just_visiting = 10
-		free_parking = 20
+		safe_places = [10, 20]
 		go_to_jail = 30
+		luxury_tax = 38
 
 	tiles = ["=== GO ===", "Mediterranean ave. (P)", "Community Chest i",
 		"Baltic ave. (P)", "Income Tax", "Reading RR", "Oriental ave. (L)",
@@ -84,12 +89,12 @@ class Board:
 				return Board.TileType.go
 			if idx == Board.TilePositions.income_tax:
 				return Board.TileType.income_tax
-			if idx == Board.TilePositions.just_visiting:
-				return Board.TileType.just_visiting
-			if idx == Board.TilePositions.free_parking:
-				return Board.TileType.free_parking
+			if idx in Board.TilePositions.safe_places:
+				return Board.TileType.safe_place
 			if idx == Board.TilePositions.go_to_jail:
 				return Board.TileType.go_to_jail
+			if idx == Board.TilePositions.luxury_tax:
+				return Board.TileType.luxury_tax
 			return Board.TileType.regular
 		except ValueError, e:
 			raise AssertionError('No tile named' + tile_name)
@@ -100,6 +105,9 @@ class Event:
 		roll_die_first_time = 1
 		roll_die = 2
 		buy_property = 3
+		income_tax = 4
+		open_card = 5
+		quit_game = 6
 	def __init__(self, event_type):
 		self.event_type = event_type
 	@staticmethod
@@ -130,10 +138,10 @@ class StartGameEvent(Event):
 	def run(self, monopoly):
 		monopoly.expect_state(GameState.uninitialized)
 		monopoly.players = self.players
-		monopoly.expect_input('How many players? ')
+		monopoly.expect_input('How many players?')
 		monopoly.write(str(len(self.players)))
 		for player, idx in itertools.izip(monopoly.players, xrange(1, len(monopoly.players)+1)):
-			monopoly.expect_input('Player {0}\'s name: '.format(idx))
+			monopoly.expect_input('Player {0}\'s name:'.format(idx))
 			monopoly.write(player)
 		monopoly.state = GameState.starting
 		return EventResponse(self, None)
@@ -160,7 +168,7 @@ class RollDieForTheFirstTimeEvent(Event):
 			elif dice == max_dice:
 				success = False
 		if success:
-			monopoly.next_player = 	first_player_idx
+			monopoly.next_player = first_player_idx
 			monopoly.state = GameState.player_turn
 		# consume last message
 		monopoly.get_line()
@@ -171,72 +179,19 @@ class RollDieEvent(Event):
 		Event.__init__(self, Event.EventType.roll_die)
 	def run(self, monopoly):
 		monopoly.expect_state(GameState.player_turn)
-		# consume 'player (<cash>) <tile>'
-		monopoly.get_line()
-		# consume 'command: '
-		monopoly.get_line()
+		monopoly.expect_input('{0} \({1}\) .*'.format(
+			monopoly.players[monopoly.next_player],
+			monopoly.next_player+1), True)
+		monopoly.expect_input('-- Command:')
 		monopoly.write('roll')
 		# get "roll is x, y"
 		die = monopoly.get_line().split()[2:]
 		# print die
 		# get rid of comma and make tuple
 		die = (int(die[0][:-1]), int(die[1]))
-		re_template = "That puts you on ([A-Za-z \(\)\.\=&]+)"
-		inp = monopoly.get_line()
-		m = re.match(re_template, inp)
-		assert(m)
-		tile_type = Board.get_tile_type(m.group(1))
-		response = {}
-		response['die'] = die
-		response['tile_type'] = (tile_type, Board.TileType.tile_names[tile_type])
-		response['location'] = m.group(1)
 		monopoly.last_die = die
-		if tile_type == Board.TileType.regular:
-			re_template = 'That would cost \$([0-9]+)'
-			inp = monopoly.get_line()
-			m = re.match(re_template, inp)
-			# TODO: handle owned property
-			# If owned by other ppl, message is:
-			# 		Owned by <NAME>
-			# 		rent is <INTEGER>
-			if m:
-				response['cost'] = int(m.group(1))
-				monopoly.expect_input('Do you want to buy? ')
-				monopoly.state = GameState.buy_property_prompt
-			else:
-				re_template = 'Owned by .*'
-				assert(re.match(re_template, inp))
-				# TODO: what if this property is owned by us?
-				re_template = 'rent is ([0-9]+)'
-				inp = monopoly.get_line()
-				m = re.match(re_template, inp)
-				assert(m)
-				response['rent'] = int(m.group(1))
-				monopoly.end_turn()
-		# elif tile_type == Board.TileType.go:
-		# 	pass
-		elif tile_type == Board.TileType.chest:
-			re_template = '[\-]+'
-			inp = monopoly.get_line()
-			assert(re.match(re_template, inp))
-			response['message'] = []
-			inp = monopoly.get_line()
-			while not re.match(re_template, inp):
-				response['message'].append(inp)
-				inp = monopoly.get_line()
-		elif tile_type == Board.TileType.income_tax:
-			monopoly.expect_input('Do you wish to lose 10%% of your total worth or $200? ')
-			monopoly.state = GameState.income_tax_prompt
-		elif tile_type == Board.TileType.just_visiting:
-			monopoly.expect_input('That is a safe place')
-			monopoly.end_turn()
-		elif tile_type == Board.TileType.free_parking:
-			monopoly.expect_input('That is a safe place')
-			monopoly.end_turn()
-		# elif tile_type == Board.TileType.go_to_jail:
-		# 	pass
-		else:
-			raise AssertionError('Unhandled tile type: ' + json.dumps(response))
+		response = monopoly.handle_tile_visit()
+		response['die'] = die
 		return EventResponse(self, response)
 
 class BuyPropertyResponseEvent(Event):
@@ -255,7 +210,7 @@ class BuyPropertyResponseEvent(Event):
 
 class IncomeTaxResponseEvent(Event):
 	def __init__(self, use_percentage):
-		Event.__init__(self, Event.EventType.buy_property)
+		Event.__init__(self, Event.EventType.income_tax)
 		self.use_percentage = use_percentage
 	def run(self, monopoly):
 		monopoly.expect_state(GameState.income_tax_prompt)
@@ -263,10 +218,49 @@ class IncomeTaxResponseEvent(Event):
 			monopoly.write('10%')
 		else:
 			monopoly.write('200')
-		# Good guess.  Lucky person!
-		# You were worth $<INTEGER>. Good try, but not quite.
-		inp = monopoly.get_line()
+		message = monopoly.get_line()
 		monopoly.state = GameState.player_turn
 		monopoly.end_turn()
-		return EventResponse(self, None, True)
+		return EventResponse(self, {'message':message}, True)
 
+class OpenCardEvent(Event):
+	def __init__(self):
+		Event.__init__(self, Event.EventType.open_card)
+	def run(self, monopoly):
+		monopoly.expect_state(GameState.open_card_prompt)
+		re_template = '[\-]+'
+		inp = monopoly.get_line()
+		assert(re.match(re_template, inp))
+		message = []
+		inp = monopoly.get_line()
+		while not re.match(re_template, inp):
+			message.append(inp)
+			inp = monopoly.get_line()
+		print 'card: \t' + str(message)
+		if cards.Cards.has_prompt(message):
+			response = monopoly.handle_tile_visit()
+			response['message'] = message
+			monopoly.state = GameState.player_turn
+			return EventResponse(self, response, True)
+		else:
+			for _ in xrange(cards.Cards.extra_msg_count(message)):
+				monopoly.get_line()
+			monopoly.end_turn()
+			monopoly.state = GameState.player_turn
+			return EventResponse(self, {'message':message}, True)
+
+class QuitEvent(Event):
+	def __init__(self):
+		Event.__init__(self, Event.EventType.quit_game)
+
+	def run(self, monopoly):
+		monopoly.expect_state(GameState.player_turn)
+		# TODO: <player> (<no>) on <place>
+		monopoly.get_line()
+		monopoly.expect_input('-- Command:')
+		monopoly.write('quit')
+		monopoly.expect_input('Do you all really want to quit?')
+		monopoly.write('yes')
+		monopoly.proc.wait()
+		monopoly.state = GameState.terminated
+		return EventResponse(self, None)
