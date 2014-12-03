@@ -19,7 +19,7 @@
 
 import pty, tty, os, threading, subprocess, sys, fcntl, re
 import itertools, json, traceback, datetime
-import events
+import events, board, states
 
 class BufferedReader:
 	def __init__(self, infile):
@@ -151,10 +151,10 @@ class Monopoly:
 		inp = self.get_line()
 		m = re.match(re_template, inp)
 		assert(m)
-		tile_type = events.Board.get_tile_type(m.group(1))
-		response['tile_type'] = (tile_type, events.Board.TileType.tile_names[tile_type])
+		tile_type = board.Board.get_tile_type(m.group(1))
+		response['tile_type'] = (tile_type, board.Board.TileType.tile_names[tile_type])
 		response['location'] = m.group(1)
-		if tile_type == events.Board.TileType.regular:
+		if tile_type == board.Board.TileType.regular:
 			re_template = 'That would cost \$([0-9]+)'
 			inp = self.get_line()
 			m = re.match(re_template, inp)
@@ -178,20 +178,20 @@ class Monopoly:
 				self.end_turn()
 		# elif tile_type == Board.TileType.go:
 		# 	pass
-		elif tile_type == events.Board.TileType.chest:
+		elif tile_type == board.Board.TileType.chest:
 			self.state = events.GameState.open_card_prompt
-		elif tile_type == events.Board.TileType.income_tax:
+		elif tile_type == board.Board.TileType.income_tax:
 			self.expect_input('Do you wish to lose 10%% of your total worth or $200?')
 			self.state = events.GameState.income_tax_prompt
-		elif tile_type == events.Board.TileType.safe_place:
+		elif tile_type == board.Board.TileType.safe_place:
 			self.state = events.GameState.player_turn
 			self.expect_input('That is a safe place')
 			self.end_turn()
-		elif tile_type == events.Board.TileType.luxury_tax:
+		elif tile_type == board.Board.TileType.luxury_tax:
 			self.state = events.GameState.player_turn
 			self.expect_input('You lose $75')
 			self.end_turn()
-		elif tile_type == events.Board.TileType.go_to_jail:
+		elif tile_type == board.Board.TileType.go_to_jail:
 			self.state = events.GameState.player_turn
 			self.end_turn()
 		else:
