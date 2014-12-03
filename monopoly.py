@@ -102,12 +102,18 @@ class Monopoly:
 					str_to_expect, inp)
 			assert(str_to_expect == inp)
 	def expect_state(self, state):
-		if self.state != state:
-			print 'AssertionError:\n\texpected {0}\n\treceived {1}'.format(
-				events.GameState.state_names[state],
-				events.GameState.state_names[self.state])
-
-		assert(self.state == state)
+		if type(state) == type([]):
+			if self.state not in state:
+				print 'AssertionError:\n\texpected {0}\n\treceived {1}'.format(
+					','.join(events.GameState.state_names[i] for i in state),
+					events.GameState.state_names[self.state])
+			assert(self.state in state)
+		else:
+			if self.state != state:
+				print 'AssertionError:\n\texpected {0}\n\treceived {1}'.format(
+					events.GameState.state_names[state],
+					events.GameState.state_names[self.state])
+			assert(self.state == state)
 	def write(self, buf):
 		self.proc.stdin.write(buf + '\n')
 	def handle_event(self, event):
@@ -218,8 +224,16 @@ def main():
 		if r.new_state == events.GameState.player_turn:
 			r = m.handle_event(events.DetectStateEvent())
 		elif r.new_state == events.GameState.not_in_jail:
+			r = m.handle_event(events.GetHoldingsEvent())
+			print r
+			print '------------------------------------'
+			r = m.handle_event(events.DetectStateEvent())
 			r = m.handle_event(events.RollDieEvent())
 		elif r.new_state == events.GameState.in_jail:
+			r = m.handle_event(events.GetHoldingsEvent())
+			print r
+			print '------------------------------------'
+			r = m.handle_event(events.DetectStateEvent())
 			r = m.handle_event(events.RollDieInJailEvent())
 		elif r.new_state == events.GameState.buy_property_prompt:
 			r = m.handle_event(events.BuyPropertyResponseEvent(True))

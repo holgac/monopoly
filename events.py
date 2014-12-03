@@ -18,8 +18,7 @@
 
 import pty, tty, os, threading, subprocess, sys, fcntl, re
 import itertools, json, traceback
-import cards
-import states
+import cards, states
 
 # TODO: move to states.py
 class GameState:
@@ -57,6 +56,7 @@ class Event:
         quit_game = 6
         roll_die_in_jail = 7
         detect_state = 8
+        get_holdings = 9
     def __init__(self, event_type):
         self.event_type = event_type
     @staticmethod
@@ -128,6 +128,8 @@ class DetectStateEvent(Event):
 		Event.__init__(self, Event.EventType.detect_state)
 	def run(self, monopoly):
 		monopoly.expect_state(GameState.player_turn)
+		if monopoly.peek_line() == monopoly.players[monopoly.next_player] + ' rolled doubles.  Goes again':
+			monopoly.get_line()
 		monopoly.expect_input('{0} \({1}\) .*'.format(
 			monopoly.players[monopoly.next_player],
 			monopoly.next_player+1), True)
@@ -143,6 +145,32 @@ class DetectStateEvent(Event):
 			monopoly.state = GameState.not_in_jail
 		monopoly.expect_input('-- Command:')
 		return EventResponse(self, None)
+
+class GetHoldingsEvent(Event):
+	def __init__(self):
+		Event.__init__(self, Event.EventType.get_holdings)
+	def run(self, monopoly):
+		monopoly.expect_state([GameState.not_in_jail, GameState.in_jail])
+		response = {'holdings':{}}
+		monopoly.write('holdings')
+		for p in monopoly.players:
+			monopoly.expect_input('Whose holdings do you want to see?')
+			monopoly.write(p)
+			p_holdings = {}
+			monopoly.expect_input(p + '\'s \([0-9]+\) holdings \(Total worth: \$[0-9]+\):', True)
+			p_holdings['balance'] = monopoly.get_line()
+			if monopoly.peek_line() == 'Name      Own      Price Mg # Rent':
+				monopoly.get_line()
+			p_properties = []
+			while monopoly.peek_line() != 'Whose holdings do you want to see?':
+				p_properties.append(monopoly.get_line())
+			p_holdings['properties'] = p_properties
+			response['holdings'][p] = p_holdings
+		monopoly.expect_input('Whose holdings do you want to see?')
+		monopoly.write('done')
+		monopoly.state = GameState.player_turn
+		return EventResponse(self, response)
+
 
 class RollDieEvent(Event):
 	def __init__(self):
