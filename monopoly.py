@@ -80,6 +80,8 @@ class Monopoly:
 		self.inp_reader = BufferedReader(self.proc.stdout)
 		self.last_die = None
 		self.double_count = 0
+		self.jail_turn_count = 0
+		self.just_got_out_of_jail = False
 	def get_line(self, block=True):
 		return self.inp_reader.get_line(block)
 	def peek_line(self, block=True):
@@ -109,7 +111,6 @@ class Monopoly:
 	def write(self, buf):
 		self.proc.stdin.write(buf + '\n')
 	def handle_event(self, event):
-
 		print 'handling ' + event.__class__.__name__
 		try:
 			response =  event.run(self)
@@ -131,16 +132,19 @@ class Monopoly:
 			return events.EventResponse(event, None, False, self.state,
 				(self.next_player, self.players[self.next_player]))
 	def end_turn(self):
-		if self.last_die[0] == self.last_die[1]:
+		if self.last_die[0] == self.last_die[1] and not self.just_got_out_of_jail:
 			self.double_count += 1
 			if self.double_count == 3:
 				self.expect_input('That\'s 3 doubles.  You go to jail')
+				self.double_count = 0
+				self.next_player = (self.next_player + 1) % len(self.players)
 			else:
 				self.expect_input('{0} rolled doubles.  Goes again'.format(
 					self.players[self.next_player]))
 		else:
 			self.double_count = 0
 			self.next_player = (self.next_player + 1) % len(self.players)
+		self.just_got_out_of_jail = False
 		self.last_die = None
 	def handle_tile_visit(self, debug=False):
 		response = {}
@@ -212,21 +216,22 @@ def main():
 	print r
 	while True:
 		if r.new_state == events.GameState.player_turn:
+			r = m.handle_event(events.DetectStateEvent())
+		elif r.new_state == events.GameState.not_in_jail:
 			r = m.handle_event(events.RollDieEvent())
-			print r
-			print '------------------------------------'
+		elif r.new_state == events.GameState.in_jail:
+			r = m.handle_event(events.RollDieInJailEvent())
+		elif r.new_state == events.GameState.buy_property_prompt:
+			r = m.handle_event(events.BuyPropertyResponseEvent(True))
+		elif r.new_state == events.GameState.income_tax_prompt:
+			r = m.handle_event(events.IncomeTaxResponseEvent(False))
+		elif r.new_state == events.GameState.open_card_prompt:
+			r = m.handle_event(events.OpenCardEvent())
 		else:
-			if r.new_state == events.GameState.buy_property_prompt:
-				r = m.handle_event(events.BuyPropertyResponseEvent(True))
-			elif r.new_state == events.GameState.income_tax_prompt:
-				r = m.handle_event(events.IncomeTaxResponseEvent(False))
-			elif r.new_state == events.GameState.open_card_prompt:
-				r = m.handle_event(events.OpenCardEvent())
-			else:
-				# sending wrong event just to see the inputs
-				r = m.handle_event(events.RollDieForTheFirstTimeEvent())
-			print r
-			print '------------------------------------'
+			# sending wrong event just to see the inputs
+			r = m.handle_event(events.RollDieForTheFirstTimeEvent())
+		print r
+		print '------------------------------------'
 
 		if not r.success:
 			raw_input()

@@ -31,6 +31,7 @@ class GameState:
 	income_tax_prompt = 5
 	open_card_prompt = 6
 	in_jail = 7
+	not_in_jail = 8
 	state_names = {
 		uninitialized:'uninitialized',
 		starting:'starting',
@@ -39,7 +40,8 @@ class GameState:
 		buy_property_prompt:'buy_property_prompt',
 		income_tax_prompt:'income_tax_prompt',
 		open_card_prompt: 'open_card_prompt',
-		in_jail: 'in_jail'
+		in_jail: 'in_jail',
+		not_in_jail: 'not_in_jail'
 	}
 
 # TODO: move to board.py
@@ -53,6 +55,8 @@ class Event:
         income_tax = 4
         open_card = 5
         quit_game = 6
+        roll_die_in_jail = 7
+        detect_state = 8
     def __init__(self, event_type):
         self.event_type = event_type
     @staticmethod
@@ -119,20 +123,32 @@ class RollDieForTheFirstTimeEvent(Event):
         monopoly.get_line()
         return EventResponse(self,die,success)
 
-class RollDieEvent(Event):
+class DetectStateEvent(Event):
 	def __init__(self):
-		Event.__init__(self, Event.EventType.roll_die)
+		Event.__init__(self, Event.EventType.detect_state)
 	def run(self, monopoly):
 		monopoly.expect_state(GameState.player_turn)
 		monopoly.expect_input('{0} \({1}\) .*'.format(
 			monopoly.players[monopoly.next_player],
 			monopoly.next_player+1), True)
-		re_template = '\(This is your [0-3a-z]* turn in JAIL\)'
+		re_template = '\(This is your ([0-3])[a-z \(\)]* turn in JAIL\)$'
 		inp = monopoly.peek_line()
-		if re.match(re_template, inp):
+		# self.jail_turn_count = 0
+		m = re.match(re_template, inp)
+		if m:
+			monopoly.jail_turn_count = int(m.group(1))
 			monopoly.get_line()
 			monopoly.state = GameState.in_jail
+		else:
+			monopoly.state = GameState.not_in_jail
 		monopoly.expect_input('-- Command:')
+		return EventResponse(self, None)
+
+class RollDieEvent(Event):
+	def __init__(self):
+		Event.__init__(self, Event.EventType.roll_die)
+	def run(self, monopoly):
+		monopoly.expect_state(GameState.not_in_jail)
 		monopoly.write('roll')
 		# get "roll is x, y"
 		die = monopoly.get_line().split()[2:]
@@ -140,8 +156,46 @@ class RollDieEvent(Event):
 		# get rid of comma and make tuple
 		die = (int(die[0][:-1]), int(die[1]))
 		monopoly.last_die = die
-		response = monopoly.handle_tile_visit()
-		response['die'] = die
+		if monopoly.peek_line() == 'That\'s 3 doubles.  You go to jail':
+			response = {'die':die}
+			monopoly.end_turn()
+			monopoly.state = GameState.player_turn
+		else:
+			response = monopoly.handle_tile_visit()
+			response['die'] = die
+		return EventResponse(self, response)
+
+class RollDieInJailEvent(Event):
+	def __init__(self):
+		Event.__init__(self, Event.EventType.roll_die_in_jail)
+	def run(self, monopoly):
+		monopoly.expect_state(GameState.in_jail)
+		monopoly.write('roll')
+		# get "roll is x, y"
+		die = monopoly.get_line().split()[2:]
+		# print die
+		# get rid of comma and make tuple
+		die = (int(die[0][:-1]), int(die[1]))
+		monopoly.last_die = die
+		response = {}
+		if die[0] == die[1]:
+			monopoly.expect_input('Double roll gets you out.')
+			monopoly.just_got_out_of_jail = True
+			response = monopoly.handle_tile_visit()
+			response['success'] = True
+			response['die'] = die
+		elif monopoly.jail_turn_count == 3:
+			monopoly.expect_input('Sorry, that doesn\'t get you out')
+			monopoly.expect_input('It\'s your third turn and you didn\'t roll doubles.  You have to pay $50')
+			monopoly.just_got_out_of_jail = True
+			response = monopoly.handle_tile_visit()
+			response['success'] = True
+			response['die'] = die
+		else:
+			monopoly.expect_input('Sorry, that doesn\'t get you out')
+			monopoly.end_turn()
+			response['success'] = False
+			monopoly.state = GameState.player_turn
 		return EventResponse(self, response)
 
 class BuyPropertyResponseEvent(Event):
@@ -169,6 +223,11 @@ class IncomeTaxResponseEvent(Event):
         else:
             monopoly.write('200')
         message = monopoly.get_line()
+        msg = monopoly.peek_line()
+        unimportant_messages = []
+        re_template = 'Good guess\. .*'
+        if re.match(re_template, msg):
+        	monopoly.get_line()
         monopoly.state = states.GameState.player_turn
         monopoly.end_turn()
         return EventResponse(self, {'message':message}, True)
