@@ -191,7 +191,7 @@ class Monopoly:
 			self.state = events.GameState.player_turn
 			self.expect_input('You lose $75')
 			self.end_turn()
-		elif tile_type == Board.TileType.go_to_jail:
+		elif tile_type == events.Board.TileType.go_to_jail:
 			self.state = events.GameState.player_turn
 			self.end_turn()
 		else:

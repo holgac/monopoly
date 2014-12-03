@@ -60,10 +60,53 @@ class CreationTests(unittest.TestCase):
 		self.assertTrue(q.response == None)
 		self.assertTrue(m.state == events.GameState.terminated)
 
-if __name__ == '__main__':
+class PlayingTests(unittest.TestCase):
+	verbose = True
+	def setUp(self):
+		self.start_time = time.time()
+		self.m = monopoly.Monopoly()
+		player_names = ['Mal', 'Zoe', 'Wash', 'Inara', 'Jayne',
+						'Kaylee', 'Simon', 'River', 'Shepherd']
+		e = events.StartGameEvent(player_names)
+		r = self.m.handle_event(e)
+		roll_success = False
+		while not roll_success:
+			e = events.RollDieForTheFirstTimeEvent()
+			r = self.m.handle_event(e)
+			roll_success = r.success
+	def tearDown(self):
+		e = events.QuitEvent()
+		q = self.m.handle_event(e)
+		t = time.time() - self.start_time
+		t = float(str(t))
+		t = float(int(t*1000)/1000.0)
+		sys.stdout.write(' time: ' + str(t) + '  status: ')
+		sys.stdout.flush()
+	def test_playing(self):
+		r = self.m.handle_event(events.RollDieEvent())
+		turn_count = 0
+		while turn_count < 10 or r.new_state != events.GameState.player_turn:
+			turn_count += 1
+			if r.new_state == events.GameState.player_turn:
+				r = self.m.handle_event(events.RollDieEvent())
+			elif r.new_state == events.GameState.buy_property_prompt:
+				r = self.m.handle_event(events.BuyPropertyResponseEvent(True))
+			elif r.new_state == events.GameState.income_tax_prompt:
+				r = self.m.handle_event(events.IncomeTaxResponseEvent(False))
+			elif r.new_state == events.GameState.open_card_prompt:
+				r = self.m.handle_event(events.OpenCardEvent())
+			else:
+				# sending wrong event just to see the inputs
+				r = self.m.handle_event(events.RollDieForTheFirstTimeEvent())
+			print r
+			print '------------------------------------'
+
+def main():
 	import os
 	loader = unittest.TestLoader()
-	ln = lambda f: getattr(CreationTests, f).im_func.func_code.co_firstlineno
-	lncmp = lambda a, b: cmp(ln(a), ln(b))
-	loader.sortTestMethodsUsing = lncmp
+	# ln = lambda f: getattr(CreationTests, f).im_func.func_code.co_firstlineno
+	# lncmp = lambda a, b: cmp(ln(a), ln(b))
+	# loader.sortTestMethodsUsing = lncmp
 	unittest.main(testLoader=loader, verbosity=2)
+if __name__ == '__main__':
+	main()
