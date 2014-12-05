@@ -17,9 +17,8 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import json, httplib, re, datetime, sys, time
-import unittest
-import monopoly, events
+import sys, time, unittest
+import monopoly, events, states
 
 class CreationTests(unittest.TestCase):
 	verbose = True
@@ -34,7 +33,7 @@ class CreationTests(unittest.TestCase):
 
 	def test_creation_and_termination(self):
 		m = monopoly.Monopoly()
-		self.assertTrue(m.state == events.GameState.uninitialized)
+		self.assertTrue(m.state == states.GameState.uninitialized)
 		player_names = ['Mal', 'Zoe', 'Wash', 'Inara', 'Jayne',
 						'Kaylee', 'Simon', 'River', 'Shepherd']
 		e = events.StartGameEvent(player_names)
@@ -51,14 +50,14 @@ class CreationTests(unittest.TestCase):
 		for p in player_names:
 			self.assertTrue(p in r.response)
 
-		self.assertTrue(m.state == events.GameState.player_turn)
+		self.assertTrue(m.state == states.GameState.player_turn)
 
 		e = events.QuitEvent()
 		q = m.handle_event(e)
 		self.assertTrue(q.event == e)
 		self.assertTrue(q.success == True)
 		self.assertTrue(q.response == None)
-		self.assertTrue(m.state == events.GameState.terminated)
+		self.assertTrue(m.state == states.GameState.terminated)
 
 class PlayingTests(unittest.TestCase):
 	verbose = True
@@ -76,24 +75,28 @@ class PlayingTests(unittest.TestCase):
 			roll_success = r.success
 	def tearDown(self):
 		e = events.QuitEvent()
-		q = self.m.handle_event(e)
+		self.m.handle_event(e)
 		t = time.time() - self.start_time
 		t = float(str(t))
 		t = float(int(t*1000)/1000.0)
 		sys.stdout.write(' time: ' + str(t) + '  status: ')
 		sys.stdout.flush()
 	def test_playing(self):
-		r = self.m.handle_event(events.RollDieEvent())
 		turn_count = 0
-		while turn_count < 10 or r.new_state != events.GameState.player_turn:
+		r = self.m.handle_event(events.DetectStateEvent())
+		while turn_count < 20:
 			turn_count += 1
-			if r.new_state == events.GameState.player_turn:
+			if r.new_state == states.GameState.player_turn:
+				r = self.m.handle_event(events.DetectStateEvent())
+			elif r.new_state == states.GameState.not_in_jail:
 				r = self.m.handle_event(events.RollDieEvent())
-			elif r.new_state == events.GameState.buy_property_prompt:
+			elif r.new_state == states.GameState.in_jail:
+				r = self.m.handle_event(events.RollDieInJailEvent())
+			elif r.new_state == states.GameState.buy_property_prompt:
 				r = self.m.handle_event(events.BuyPropertyResponseEvent(True))
-			elif r.new_state == events.GameState.income_tax_prompt:
+			elif r.new_state == states.GameState.income_tax_prompt:
 				r = self.m.handle_event(events.IncomeTaxResponseEvent(False))
-			elif r.new_state == events.GameState.open_card_prompt:
+			elif r.new_state == states.GameState.open_card_prompt:
 				r = self.m.handle_event(events.OpenCardEvent())
 			else:
 				# sending wrong event just to see the inputs

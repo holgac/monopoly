@@ -17,8 +17,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import pty, tty, os, threading, subprocess, sys, fcntl, re
-import itertools, json, traceback, datetime
+import os, subprocess, fcntl, re, json, traceback, datetime
 import events, board, states
 
 class BufferedReader:
@@ -38,12 +37,12 @@ class BufferedReader:
 					# s =  self.infile.read()
 					# print 'read ' + s
 					# return s
-				except IOError, e:
+				except IOError:
 					pass
 		else:
 			try:
 				return self.infile.read()
-			except IOError, e:
+			except IOError:
 				return None
 	def _read_lines(self, block):
 		raw_inp = self._read_raw(block)
@@ -74,7 +73,7 @@ class Monopoly:
 		fcntl.fcntl(self.proc.stderr.fileno(), fcntl.F_SETFL, curfl | os.O_NONBLOCK)
 		curfl = fcntl.fcntl(self.proc.stdout.fileno(), fcntl.F_GETFL)
 		fcntl.fcntl(self.proc.stdout.fileno(), fcntl.F_SETFL, curfl | os.O_NONBLOCK | os.O_SYNC)
-		self.state = events.GameState.uninitialized
+		self.state = states.GameState.uninitialized
 		self.players = None
 		self.next_player = -1
 		self.inp_reader = BufferedReader(self.proc.stdout)
@@ -105,14 +104,14 @@ class Monopoly:
 		if type(state) == type([]):
 			if self.state not in state:
 				print 'AssertionError:\n\texpected {0}\n\treceived {1}'.format(
-					','.join(events.GameState.state_names[i] for i in state),
-					events.GameState.state_names[self.state])
+					','.join(states.GameState.state_names[i] for i in state),
+					states.GameState.state_names[self.state])
 			assert(self.state in state)
 		else:
 			if self.state != state:
 				print 'AssertionError:\n\texpected {0}\n\treceived {1}'.format(
-					events.GameState.state_names[state],
-					events.GameState.state_names[self.state])
+					states.GameState.state_names[state],
+					states.GameState.state_names[self.state])
 			assert(self.state == state)
 	def write(self, buf):
 		self.proc.stdin.write(buf + '\n')
@@ -123,14 +122,14 @@ class Monopoly:
 			response.new_state = self.state
 			response.next_player = (self.next_player, self.players[self.next_player])
 			return response
-		except (AssertionError, IndexError, ValueError), e:
+		except (AssertionError, IndexError, ValueError):
 			traceback.print_exc()
 			self.inp_reader._read_lines(False)
 			print 'Consumed lines: '
 			print '#\n\t'.join(self.inp_reader.consumed_buffer[-10:])
 			print 'Next lines: '
 			print '#\n\t'.join(self.inp_reader.cur_buffer)
-			print 'State: ' + events.GameState.state_names[self.state]
+			print 'State: ' + states.GameState.state_names[self.state]
 			print 'Next Player: {0} {1}'.format(self.next_player,
 				self.players[self.next_player])
 			# assertion errors should be more descriptive
@@ -171,9 +170,9 @@ class Monopoly:
 			if m:
 				response['cost'] = int(m.group(1))
 				self.expect_input('Do you want to buy?')
-				self.state = events.GameState.buy_property_prompt
+				self.state = states.GameState.buy_property_prompt
 			else:
-				self.state = events.GameState.player_turn
+				self.state = states.GameState.player_turn
 				if inp != 'You own it.':
 					re_template = 'Owned by .*'
 					assert(re.match(re_template, inp))
@@ -189,20 +188,20 @@ class Monopoly:
 		# elif tile_type == Board.TileType.go:
 		# 	pass
 		elif tile_type == board.Board.TileType.chest:
-			self.state = events.GameState.open_card_prompt
+			self.state = states.GameState.open_card_prompt
 		elif tile_type == board.Board.TileType.income_tax:
 			self.expect_input('Do you wish to lose 10%% of your total worth or $200?')
-			self.state = events.GameState.income_tax_prompt
+			self.state = states.GameState.income_tax_prompt
 		elif tile_type == board.Board.TileType.safe_place:
-			self.state = events.GameState.player_turn
+			self.state = states.GameState.player_turn
 			self.expect_input('That is a safe place')
 			self.end_turn()
 		elif tile_type == board.Board.TileType.luxury_tax:
-			self.state = events.GameState.player_turn
+			self.state = states.GameState.player_turn
 			self.expect_input('You lose $75')
 			self.end_turn()
 		elif tile_type == board.Board.TileType.go_to_jail:
-			self.state = events.GameState.player_turn
+			self.state = states.GameState.player_turn
 			self.end_turn()
 		else:
 			raise AssertionError('Unhandled tile type: ' + json.dumps(response))
@@ -221,25 +220,25 @@ def main():
 		r = m.handle_event(events.RollDieForTheFirstTimeEvent())
 	print r
 	while True:
-		if r.new_state == events.GameState.player_turn:
+		if r.new_state == states.GameState.player_turn:
 			r = m.handle_event(events.DetectStateEvent())
-		elif r.new_state == events.GameState.not_in_jail:
+		elif r.new_state == states.GameState.not_in_jail:
 			r = m.handle_event(events.GetHoldingsEvent())
 			print r
 			print '------------------------------------'
 			r = m.handle_event(events.DetectStateEvent())
 			r = m.handle_event(events.RollDieEvent())
-		elif r.new_state == events.GameState.in_jail:
+		elif r.new_state == states.GameState.in_jail:
 			r = m.handle_event(events.GetHoldingsEvent())
 			print r
 			print '------------------------------------'
 			r = m.handle_event(events.DetectStateEvent())
 			r = m.handle_event(events.RollDieInJailEvent())
-		elif r.new_state == events.GameState.buy_property_prompt:
+		elif r.new_state == states.GameState.buy_property_prompt:
 			r = m.handle_event(events.BuyPropertyResponseEvent(True))
-		elif r.new_state == events.GameState.income_tax_prompt:
+		elif r.new_state == states.GameState.income_tax_prompt:
 			r = m.handle_event(events.IncomeTaxResponseEvent(False))
-		elif r.new_state == events.GameState.open_card_prompt:
+		elif r.new_state == states.GameState.open_card_prompt:
 			r = m.handle_event(events.OpenCardEvent())
 		else:
 			# sending wrong event just to see the inputs
@@ -247,6 +246,7 @@ def main():
 		print r
 		print '------------------------------------'
 
+		# raw_input()
 		if not r.success:
 			raw_input()
 	m.proc.kill()

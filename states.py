@@ -18,19 +18,23 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 class GameState:
-    uninitialized = 0
-    starting = 1
-    player_turn = 2
-    terminated = 3
-    buy_property_prompt = 4
-    income_tax_prompt = 5
-    open_card_prompt = 6
-    state_names = {
-        uninitialized:'uninitialized',
-        starting:'starting',
-        player_turn:'player_turn',
-        terminated:'terminated',
-        buy_property_prompt:'buy_property_prompt',
-        income_tax_prompt:'income_tax_prompt',
-        open_card_prompt: 'open_card_prompt'
-    }
+	uninitialized = 0
+	starting = 1
+	player_turn = 2
+	terminated = 3
+	buy_property_prompt = 4
+	income_tax_prompt = 5
+	open_card_prompt = 6
+	in_jail = 7
+	not_in_jail = 8
+	state_names = {
+		uninitialized:'uninitialized',
+		starting:'starting',
+		player_turn:'player_turn',
+		terminated:'terminated',
+		buy_property_prompt:'buy_property_prompt',
+		income_tax_prompt:'income_tax_prompt',
+		open_card_prompt: 'open_card_prompt',
+		in_jail: 'in_jail',
+		not_in_jail: 'not_in_jail'
+	}
