@@ -22,25 +22,17 @@ import cards, states
 class Event:
 	class EventType:
 		start_game = 0
-		roll_die_first_time = 1
+		roll_die_for_the_first_time = 1
 		roll_die = 2
-		buy_property = 3
-		income_tax = 4
+		buy_property_response = 3
+		income_tax_response = 4
 		open_card = 5
-		quit_game = 6
+		quit = 6
 		roll_die_in_jail = 7
 		detect_state = 8
 		get_holdings = 9
 	def __init__(self, event_type):
 		self.event_type = event_type
-	@staticmethod
-	def create_event(event_type):
-		# Factory method with event registration would be nice
-		if event_type == Event.EventType.start_game:
-			return StartGameEvent()
-		if event_type == Event.EventType.roll_die_first_time:
-			return RollDieEvent()
-		raise
 
 # TODO: send new GameState along with responses
 class EventResponse:
@@ -74,7 +66,7 @@ class StartGameEvent(Event):
 
 class RollDieForTheFirstTimeEvent(Event):
 	def __init__(self):
-		Event.__init__(self, Event.EventType.roll_die_first_time)
+		Event.__init__(self, Event.EventType.roll_die_for_the_first_time)
 	def run(self, monopoly):
 		monopoly.expect_state(states.GameState.starting)
 		die = {}
@@ -203,7 +195,7 @@ class RollDieInJailEvent(Event):
 
 class BuyPropertyResponseEvent(Event):
 	def __init__(self, response):
-		Event.__init__(self, Event.EventType.buy_property)
+		Event.__init__(self, Event.EventType.buy_property_response)
 		self.response = response
 	def run(self, monopoly):
 		monopoly.expect_state(states.GameState.buy_property_prompt)
@@ -217,7 +209,7 @@ class BuyPropertyResponseEvent(Event):
 
 class IncomeTaxResponseEvent(Event):
 	def __init__(self, use_percentage):
-		Event.__init__(self, Event.EventType.income_tax)
+		Event.__init__(self, Event.EventType.income_tax_response)
 		self.use_percentage = use_percentage
 	def run(self, monopoly):
 		monopoly.expect_state(states.GameState.income_tax_prompt)
@@ -273,16 +265,14 @@ class OpenCardEvent(Event):
 
 class QuitEvent(Event):
 	def __init__(self):
-		Event.__init__(self, Event.EventType.quit_game)
+		Event.__init__(self, Event.EventType.quit)
 
 	def run(self, monopoly):
-		monopoly.expect_state(states.GameState.player_turn)
-		# TODO: <player> (<no>) on <place>
-		monopoly.get_line()
-		monopoly.expect_input('-- Command:')
+		monopoly.expect_state([states.GameState.not_in_jail, states.GameState.in_jail])
 		monopoly.write('quit')
 		monopoly.expect_input('Do you all really want to quit?')
 		monopoly.write('yes')
 		monopoly.proc.wait()
 		monopoly.state = states.GameState.terminated
 		return EventResponse(self, None)
+

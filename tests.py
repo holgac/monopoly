@@ -51,7 +51,7 @@ class CreationTests(unittest.TestCase):
 			self.assertTrue(p in r.response)
 
 		self.assertTrue(m.state == states.GameState.player_turn)
-
+		m.handle_event(events.DetectStateEvent())
 		e = events.QuitEvent()
 		q = m.handle_event(e)
 		self.assertTrue(q.event == e)
@@ -84,7 +84,7 @@ class PlayingTests(unittest.TestCase):
 	def test_playing(self):
 		turn_count = 0
 		r = self.m.handle_event(events.DetectStateEvent())
-		while turn_count < 20:
+		while turn_count < 20 or r.new_state != states.GameState.player_turn:
 			turn_count += 1
 			if r.new_state == states.GameState.player_turn:
 				r = self.m.handle_event(events.DetectStateEvent())
@@ -103,9 +103,9 @@ class PlayingTests(unittest.TestCase):
 				r = self.m.handle_event(events.RollDieForTheFirstTimeEvent())
 			print r
 			print '------------------------------------'
+		self.m.handle_event(events.DetectStateEvent())
 
 def main():
-	import os
 	loader = unittest.TestLoader()
 	# ln = lambda f: getattr(CreationTests, f).im_func.func_code.co_firstlineno
 	# lncmp = lambda a, b: cmp(ln(a), ln(b))
