@@ -21,16 +21,17 @@ import cards, states
 
 class Event:
 	class EventType:
-		start_game = 0
-		roll_die_for_the_first_time = 1
-		roll_die = 2
-		buy_property_response = 3
-		income_tax_response = 4
-		open_card = 5
-		quit = 6
-		roll_die_in_jail = 7
-		detect_state = 8
-		get_holdings = 9
+		add_player = 0
+		start_game = 1
+		roll_die_for_the_first_time = 2
+		roll_die = 3
+		buy_property_response = 4
+		income_tax_response = 5
+		open_card = 6
+		quit = 7
+		roll_die_in_jail = 8
+		detect_state = 9
+		get_holdings = 10
 	def __init__(self, event_type):
 		self.event_type = event_type
 
@@ -47,15 +48,36 @@ class EventResponse:
 			self.event.__class__.__name__, self.success, states.GameState.state_names[self.new_state],
 			json.dumps(self.next_player), json.dumps(self.response))
 
-class StartGameEvent(Event):
-	def __init__(self, players):
-		Event.__init__(self, Event.EventType.start_game)
-		self.players = players
+class AddPlayerEvent(Event):
+	def __init__(self, player_name):
+		Event.__init__(self, Event.EventType.add_player)
+		self.player_name = player_name
 	def run(self, monopoly):
 		monopoly.expect_state(states.GameState.uninitialized)
-		monopoly.players = self.players
+		monopoly.players.append(self.player_name)
+		return EventResponse(self, None)
+	def __str__(self):
+		return 'StartGameEvent'
+
+class RemovePlayerEvent(Event):
+	def __init__(self, player_name):
+		Event.__init__(self, Event.EventType.add_player)
+		self.player_name = player_name
+	def run(self, monopoly):
+		monopoly.expect_state(states.GameState.uninitialized)
+		del monopoly.players[monopoly.players.index(self.player_name)]
+		return EventResponse(self, None)
+	def __str__(self):
+		return 'StartGameEvent'
+
+
+class StartGameEvent(Event):
+	def __init__(self):
+		Event.__init__(self, Event.EventType.start_game)
+	def run(self, monopoly):
+		monopoly.expect_state(states.GameState.uninitialized)
 		monopoly.expect_input('How many players?')
-		monopoly.write(str(len(self.players)))
+		monopoly.write(str(len(monopoly.players)))
 		for player, idx in itertools.izip(monopoly.players, xrange(1, len(monopoly.players)+1)):
 			monopoly.expect_input('Player {0}\'s name:'.format(idx))
 			monopoly.write(player)
@@ -239,7 +261,6 @@ class OpenCardEvent(Event):
 		while not re.match(re_template, inp):
 			message.append(inp)
 			inp = monopoly.get_line()
-		print 'card: \t' + str(message)
 		if cards.Cards.has_prompt(message):
 			response = monopoly.handle_tile_visit(True)
 			response['message'] = message
