@@ -23,7 +23,7 @@ class GameFactory(object):
 	def __init__(self, game_class):
 		self.games = {}
 		self.last_id = -1
-		self.game_class = None
+		self.game_class = game_class
 	def get_instance(self, game_id):
 		return self.games[game_id]
 	def create_instance(self, Game):
@@ -44,51 +44,62 @@ class EventFactory(object):
 		return self.events[event_type]
 
 class Agent(threading.Thread):
-	def __init__(self, connection, client_address, game_factory, event_factory):
+	def __init__(self, connection, client_address, game_factory, event_factory, agent_no):
 		threading.Thread.__init__(self)
 		self.connection = connection
 		self.client_address = client_address
 		self.game_factory = game_factory
 		self.event_factory = event_factory
+		self.prelog = '[MP_AGT#{0}]:'.format(agent_no)
 	def play_game(self):
 		# message structure:
 		# {"game":"game_id", "event":"roll_die", "params":[]}
 		try:
-			print >>sys.stderr, 'connection from', self.client_address
+			print self.prelog, 'Client connected!'
 			data = self.connection.recv(65536)
 			self.monop = None
 			if data:
 				req = json.loads(data)
 				self.game_id = req['game']
 				if self.game_id:
+					print self.prelog, 'Joined game with id {0}'.format(self.game_id)
 					self.monop = self.game_factory.get_instance(self.game_id)
 				else:
 					self.game_id, self.monop = self.game_factory.create_instance(monopoly.Monopoly)
+					print self.prelog, 'Created game with id {0}'.format(self.game_id)
+					resp = {'success':True,'game':self.game_id}
+					self.connection.sendall(json.dumps(resp))
+					data = self.connection.recv(65536)
+					if not data:
+						return
+					req = json.loads(data)
 			else:
 				return
-
-			# Receive the data in small chunks and retransmit it
 			while True:
+				assert('event' in req)
+				assert('params' in req)
+				event_class = self.event_factory.get_event_class(req['event'])
+				ev = event_class(*req['params'])
+				er = self.monop.process_event(ev)
+				jresp = json.dumps(er, cls=events.EventResponse.Encoder)
+				print self.prelog, jresp
+				self.connection.sendall(jresp)
 				data = self.connection.recv(65536)
-				if data:
-					req = json.loads(data)
-					print >>sys.stderr, 'sending data back to the client'
-					self.connection.sendall(json.dumps(req))
-				else:
-					print >>sys.stderr, 'no more data from', self.client_address
+				if not data:
 					break
-		except Exception, e:
-			traceback.print_exc()
-			raise e
+				req = json.loads(data)
+		# except Exception, e:
+		# 	traceback.print_exc()
+		# 	raise e
 		finally:
 			# Clean up the connection
+			print self.prelog, 'Quit!'
 			self.connection.close()
 
 	def run(self):
-		print "my thread ", id(threading.current_thread), " is started"
-		print "my thread ", id(threading.current_thread), " is running"
 		self.play_game()
-		print "my thread ", id(threading.current_thread), " is stopped"
+		print self.prelog, 'Thread terminated!'
+
 
 
 class GameServer(object):
@@ -110,6 +121,7 @@ class GameServer(object):
 				self.event_factory.register_event(name, event_class)
 		self.game_factory = GameFactory(monopoly.Monopoly)
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.agent_no = 0
 	def run(self, port=3001):
 		print 'trying to run'
 		# TODO: change bind address to localhost to prevent external connections
@@ -119,12 +131,16 @@ class GameServer(object):
 		while True:
 			connection, client_address = self.sock.accept()
 			print 'a client!'
-			agent = Agent(connection, client_address, None)
+			agent = Agent(connection, client_address, self.game_factory, self.event_factory, self.agent_no)
 			agent.start()
+			self.agent_no += 1
 
 def main():
 	gs = GameServer()
-	gs.run(3001)
+	port = 3001
+	if len(sys.argv) > 1:
+		port = int(sys.argv[1])
+	gs.run(port)
 
 if __name__ == '__main__':
 	main()

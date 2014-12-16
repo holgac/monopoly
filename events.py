@@ -37,6 +37,17 @@ class Event:
 
 # TODO: send new GameState along with responses
 class EventResponse:
+	class Encoder(json.JSONEncoder):
+		def default(self, o):
+			resp = {}
+			resp['event'] = o.event.__class__.__name__
+			resp['success'] = o.success
+			resp['new_state'] = o.new_state
+			# TODO: remove
+			resp['new_state_str'] = states.GameState.state_names[self.new_state]
+			resp['next_player'] = o.next_player
+			resp['response'] = o.response
+			return resp
 	def __init__(self, event, response, success=True, new_state=None, next_player=None):
 		self.event = event
 		self.response = response
