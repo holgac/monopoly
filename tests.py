@@ -36,7 +36,11 @@ class CreationTests(unittest.TestCase):
 		self.assertTrue(m.state == states.GameState.uninitialized)
 		player_names = ['Mal', 'Zoe', 'Wash', 'Inara', 'Jayne',
 						'Kaylee', 'Simon', 'River', 'Shepherd']
-		e = events.StartGameEvent(player_names)
+		for p in player_names:
+			r = m.handle_event(events.AddPlayerEvent(p))
+			self.assertTrue(r.success == True)
+			self.assertTrue(r.response == None)
+		e = events.StartGameEvent()
 		r = m.handle_event(e)
 		self.assertTrue(r.event == e)
 		self.assertTrue(r.success == True)
@@ -66,8 +70,10 @@ class PlayingTests(unittest.TestCase):
 		self.m = monopoly.Monopoly()
 		player_names = ['Mal', 'Zoe', 'Wash', 'Inara', 'Jayne',
 						'Kaylee', 'Simon', 'River', 'Shepherd']
-		e = events.StartGameEvent(player_names)
-		r = self.m.handle_event(e)
+		for p in player_names:
+			self.m.handle_event(events.AddPlayerEvent(p))
+		e = events.StartGameEvent()
+		self.m.handle_event(e)
 		roll_success = False
 		while not roll_success:
 			e = events.RollDieForTheFirstTimeEvent()
@@ -101,8 +107,8 @@ class PlayingTests(unittest.TestCase):
 			else:
 				# sending wrong event just to see the inputs
 				r = self.m.handle_event(events.RollDieForTheFirstTimeEvent())
-			print r
-			print '------------------------------------'
+			# print r
+			# print '------------------------------------'
 		self.m.handle_event(events.DetectStateEvent())
 
 def main():

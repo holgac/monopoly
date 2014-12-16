@@ -74,7 +74,7 @@ class Monopoly:
 		curfl = fcntl.fcntl(self.proc.stdout.fileno(), fcntl.F_GETFL)
 		fcntl.fcntl(self.proc.stdout.fileno(), fcntl.F_SETFL, curfl | os.O_NONBLOCK | os.O_SYNC)
 		self.state = states.GameState.uninitialized
-		self.players = None
+		self.players = []
 		self.next_player = -1
 		self.inp_reader = BufferedReader(self.proc.stdout)
 		self.last_die = None
@@ -206,6 +206,11 @@ class Monopoly:
 		else:
 			raise AssertionError('Unhandled tile type: ' + json.dumps(response))
 		return response
+	def kill(self):
+		try:
+			self.proc.kill()
+		except OSError:
+			pass
 
 
 def main():
@@ -213,7 +218,10 @@ def main():
 	print '------------------------------------'
 	print '------------------------------------'
 	m = Monopoly()
-	print m.handle_event(events.StartGameEvent(['ahmet', 'mehmet', 'cemil', 'asd', 'bsd', 'csd', 'dsd', 'esd', 'fsd']))
+	print m.handle_event(events.AddPlayerEvent('ahmet'))
+	print m.handle_event(events.AddPlayerEvent('mehmet'))
+	print m.handle_event(events.AddPlayerEvent('ali'))
+	r = m.handle_event(events.StartGameEvent())
 	r = m.handle_event(events.RollDieForTheFirstTimeEvent())
 	while not r.success:
 		print r
