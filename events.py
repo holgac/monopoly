@@ -38,15 +38,15 @@ class Event:
 # TODO: send new GameState along with responses
 class EventResponse:
 	class Encoder(json.JSONEncoder):
-		def default(self, o):
+		def default(self, e):
 			resp = {}
-			resp['event'] = o.event.__class__.__name__
-			resp['success'] = o.success
-			resp['new_state'] = o.new_state
+			resp['event'] = e.event.__class__.__name__
+			resp['success'] = e.success
+			resp['new_state'] = e.new_state
 			# TODO: remove
-			resp['new_state_str'] = states.GameState.state_names[self.new_state]
-			resp['next_player'] = o.next_player
-			resp['response'] = o.response
+			resp['new_state_str'] = states.GameState.state_names[e.new_state]
+			resp['next_player'] = e.next_player
+			resp['response'] = e.response
 			return resp
 	def __init__(self, event, response, success=True, new_state=None, next_player=None):
 		self.event = event
@@ -103,18 +103,18 @@ class RollDieForTheFirstTimeEvent(Event):
 	def run(self, monopoly):
 		monopoly.expect_state(states.GameState.starting)
 		die = {}
-		max_dice = 0
+		max_die = 0
 		success = True
 		first_player_idx = -1
 		# actually we need to do nothing here
 		for player, idx in itertools.izip(monopoly.players, xrange(len(monopoly.players))):
-			dice = int(monopoly.get_line().split()[-1])
-			die[player] = dice
-			if dice > max_dice:
+			cur_die = int(monopoly.get_line().split()[-1])
+			die[player] = cur_die
+			if cur_die > max_die:
 				success = True
-				max_dice = dice
+				max_die = cur_die
 				first_player_idx = idx
-			elif dice == max_dice:
+			elif cur_die == max_die:
 				success = False
 		if success:
 			monopoly.next_player = first_player_idx
@@ -135,7 +135,6 @@ class DetectStateEvent(Event):
 			monopoly.next_player+1), True)
 		re_template = '\(This is your ([0-3])[a-z \(\)]* turn in JAIL\)$'
 		inp = monopoly.peek_line()
-		# self.jail_turn_count = 0
 		m = re.match(re_template, inp)
 		if m:
 			monopoly.jail_turn_count = int(m.group(1))

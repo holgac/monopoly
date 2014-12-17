@@ -33,10 +33,31 @@ class ServerTests(unittest.TestCase):
 		self.sock.sendall(json.dumps({'game':None}))
 		resp = self.sock.recv(65536)
 		self.assertTrue(resp != None)
+		print resp
 		resp = json.loads(resp)
 		self.assertTrue(resp['success'])
 		self.assertTrue('game' in resp)
+		ServerTests.game_id = resp['game']
 		self.assertTrue(int(resp['game']) >= 0)
+
+	def test_adding_player(self):
+		players = ['ahmet', 'mehmet', 'ali']
+		for p in players:
+			self.sock.sendall(json.dumps({'game':ServerTests.game_id, 'event':'add_player', 'params':[p]}))
+			resp = self.sock.recv(65536)
+			self.assertTrue(resp != None)
+			print resp
+			resp = json.loads(resp)
+			self.assertTrue(resp['success'])
+
+	def test_starting_game(self):
+		self.sock.sendall(json.dumps({'game':ServerTests.game_id, 'event':'start_game', 'params':[]}))
+		resp = self.sock.recv(65536)
+		self.assertTrue(resp != None)
+		print resp
+		resp = json.loads(resp)
+		self.assertTrue(resp['success'])
+
 
 def main():
 	loader = unittest.TestLoader()

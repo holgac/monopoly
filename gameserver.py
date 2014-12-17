@@ -16,7 +16,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 
-import inspect, re, sys, threading, json, socket, traceback
+import inspect, re, sys, threading, json, socket
 import monopoly, events
 
 class GameFactory(object):
@@ -59,9 +59,14 @@ class Agent(threading.Thread):
 			data = self.connection.recv(65536)
 			self.monop = None
 			if data:
+				print self.prelog, data
 				req = json.loads(data)
 				self.game_id = req['game']
-				if self.game_id:
+				if self.game_id is not None:
+					if 'delete_game' in req:
+						print self.prelog, 'Deleted game with id {0}'.format(self.game_id)
+						self.game_factory.destroy_instance(self.game_id)
+						return
 					print self.prelog, 'Joined game with id {0}'.format(self.game_id)
 					self.monop = self.game_factory.get_instance(self.game_id)
 				else:
@@ -80,7 +85,7 @@ class Agent(threading.Thread):
 				assert('params' in req)
 				event_class = self.event_factory.get_event_class(req['event'])
 				ev = event_class(*req['params'])
-				er = self.monop.process_event(ev)
+				er = self.monop.handle_event(ev)
 				jresp = json.dumps(er, cls=events.EventResponse.Encoder)
 				print self.prelog, jresp
 				self.connection.sendall(jresp)
