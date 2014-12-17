@@ -58,6 +58,23 @@ class ServerTests(unittest.TestCase):
 		resp = json.loads(resp)
 		self.assertTrue(resp['success'])
 
+	def test_roll_die_first(self):
+		resp = {'success':False}
+		while resp['success'] == False:
+			self.sock.sendall(json.dumps({'game':ServerTests.game_id, 'event':'roll_die_for_the_first_time', 'params':[]}))
+			resp = self.sock.recv(65536)
+			self.assertTrue(resp != None)
+			print resp
+			resp = json.loads(resp)
+		self.assertTrue(resp['success'])
+
+	def test_terminate(self):
+		self.sock.sendall(json.dumps({'game':ServerTests.game_id, 'delete_game':True}))
+		resp = self.sock.recv(65536)
+		self.assertTrue(resp != None)
+		print resp
+		resp = json.loads(resp)
+		self.assertTrue(resp['success'])
 
 def main():
 	loader = unittest.TestLoader()

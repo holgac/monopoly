@@ -66,6 +66,7 @@ class Agent(threading.Thread):
 					if 'delete_game' in req:
 						print self.prelog, 'Deleted game with id {0}'.format(self.game_id)
 						self.game_factory.destroy_instance(self.game_id)
+						self.connection.sendall(json.dumps({'success':True}))
 						return
 					print self.prelog, 'Joined game with id {0}'.format(self.game_id)
 					self.monop = self.game_factory.get_instance(self.game_id)
