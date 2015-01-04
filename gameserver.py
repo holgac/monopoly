@@ -34,6 +34,8 @@ class GameFactory(object):
 	def destroy_instance(self, game_id):
 		self.games[game_id].kill()
 		del self.games[game_id]
+	def get_ids(self):
+		return self.games.keys()
 
 class EventFactory(object):
 	def __init__(self):
@@ -71,6 +73,10 @@ class Agent(threading.Thread):
 					print self.prelog, 'Joined game with id {0}'.format(self.game_id)
 					self.monop = self.game_factory.get_instance(self.game_id)
 				else:
+					if 'get_list' in req:
+						print self.prelog, 'Getting game list'
+						self.connection.sendall(json.dumps({'success':True, 'games':self.game_factory.get_ids()}))
+						return
 					self.game_id, self.monop = self.game_factory.create_instance(monopoly.Monopoly)
 					print self.prelog, 'Created game with id {0}'.format(self.game_id)
 					resp = {'success':True,'game':self.game_id}
