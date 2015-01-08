@@ -23,7 +23,7 @@ class ServerTests(unittest.TestCase):
 	verbose = True
 	def setUp(self):
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		port = 3002
+		port = 3001
 		server_address = ('huseyinolgac.com', port)
 		self.sock.connect(server_address)
 	def tearDown(self):

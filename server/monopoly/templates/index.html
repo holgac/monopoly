@@ -2,13 +2,46 @@
 <html>
 	<head>
 		<title>
-			MONOPOLY
+			MONOPOLY DUMMY TITLE
 		</title>
+		<link rel="stylesheet" href="{% static 'css/bootstrap.css' %}" />
+		<link rel="stylesheet" href="{% static 'css/game.css' %}" />
 	</head>
 	<body>
-		<h1>
-			TEST
-		</h1>
-		<img src="{% static 'test.png' %}"> </img>
+		<div class="container">
+			<span data-gamestate="InitialState">
+				<div class="page-header">
+					<button class="btn btn-success" data-newstate="CreateGameState">Create Game</button>
+					<button class="btn btn-success" data-newstate="LobbyState">Go To Lobby</button>
+				</div>
+				TEST
+			</span>
+			<span data-gamestate="CreateGameState">
+				Please wait...
+			</span>
+			<span data-gamestate="JoinGameState">
+				Joining game #<span data-gamename></span>
+				<form>
+					<div class="form-group">
+						<label>Name:</label>
+						<input type="text" class="form-control" data-username />
+						<button class="btn btn-success" data-joingame>
+							Join!
+						</button>
+					</div>
+				</form>
+			</span>
+			<span data-gamestate="WaitForPlayersState">
+				Current players:
+				<span data-currentplayers></span>
+				<button class="btn btn-success" data-startgame>
+					Start Game!
+				</button>
+			</span>
+		</div>
+		<script type="text/javascript" src="{% static 'js/underscore.js' %}" ></script>
+		<script type="text/javascript" src="{% static 'js/jquery-1.11.2.js' %}" ></script>
+		<script type="text/javascript" src="{% static 'js/bootstrap.js' %}" ></script>
+		<script type="text/javascript" src="{% static 'js/game.js' %}" ></script>
 	</body>
 </html>
