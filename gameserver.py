@@ -59,6 +59,7 @@ class Agent(threading.Thread):
 		try:
 			print self.prelog, 'Client connected!'
 			data = self.connection.recv(65536)
+                        print self.prelog, 'Received:', data
 			self.monop = None
 			if data:
 				print self.prelog, data
@@ -106,10 +107,10 @@ class Agent(threading.Thread):
 		finally:
 			# Clean up the connection
 			print self.prelog, 'Quit!'
-			self.connection.close()
 
 	def run(self):
 		self.play_game()
+		self.connection.close()
 		print self.prelog, 'Thread terminated!'
 
 
@@ -137,7 +138,14 @@ class GameServer(object):
 	def run(self, port=3001):
 		print 'trying to run'
 		# TODO: change bind address to localhost to prevent external connections
-		self.sock.bind(('0.0.0.0', port))
+                connected = False
+                while connected is False:
+                    try:
+                        self.sock.bind(('0.0.0.0', port))
+                        connected = True
+                    except:
+                        port += 1
+                print 'listening to port', port
 		self.sock.listen(10)
 		print 'listening'
 		while True:
@@ -149,7 +157,7 @@ class GameServer(object):
 
 def main():
 	gs = GameServer()
-	port = 3001
+	port = 3002
 	if len(sys.argv) > 1:
 		port = int(sys.argv[1])
 	gs.run(port)
