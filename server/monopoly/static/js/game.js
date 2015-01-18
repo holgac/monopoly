@@ -1,4 +1,23 @@
-// adapted from http://jamesroberts.name/blog/2010/02/22/string-functions-for-javascript-trim-to-camel-case-to-dashed-and-to-underscore/
+// Monopoly
+// Copyright (C) 2014 Huseyin Muhlis Olgac
+
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+
+// adapted from 
+// http://jamesroberts.name/blog/2010/02/22/string-functions-for-javascript-trim-to-camel-case-to-dashed-and-to-underscore/
 // Modified to convert the first letter to uppercase.
 String.prototype.toCamel = function() {
 	return this.replace(/(\_[a-z]|^[a-z])/g, function($1){return $1.toUpperCase().replace('_','');});
@@ -277,6 +296,16 @@ function BuyPropertyPromptState() {
 	return self;
 };
 function OpenCardPromptState() {
+	var self = this;
+	StateBase(self);
+	self.initialize = function(monopoly, parent_span) {
+	};
+	self.uninitialize = function(monopoly, parent_span) {
+	};
+	return self;
+};
+
+function IncomeTaxPromptState() {
 	var self = this;
 	StateBase(self);
 	self.initialize = function(monopoly, parent_span) {

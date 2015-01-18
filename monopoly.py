@@ -81,6 +81,8 @@ class Monopoly:
 		self.double_count = 0
 		self.jail_turn_count = 0
 		self.just_got_out_of_jail = False
+		self.player_score = 0
+		self.pass_go_count = 0
 	def get_line(self, block=True):
 		return self.inp_reader.get_line(block)
 	def peek_line(self, block=True):
@@ -121,6 +123,7 @@ class Monopoly:
 			response =  event.run(self)
 			response.new_state = self.state
 			response.next_player = (self.next_player, self.players[self.next_player])
+			response.player_score = self.player_score
 			return response
 		except (AssertionError, IndexError, ValueError):
 			traceback.print_exc()
@@ -133,9 +136,9 @@ class Monopoly:
 			print 'Next Player: {0} {1}'.format(self.next_player,
 				self.players[self.next_player])
 			# assertion errors should be more descriptive
-			raw_input()
+			# raw_input()
 			return events.EventResponse(event, None, False, self.state,
-				(self.next_player, self.players[self.next_player]))
+				(self.next_player, self.players[self.next_player]), self.player_score)
 	def end_turn(self):
 		if self.last_die[0] == self.last_die[1] and not self.just_got_out_of_jail:
 			self.double_count += 1
@@ -144,6 +147,7 @@ class Monopoly:
 				self.double_count = 0
 				self.next_player = (self.next_player + 1) % len(self.players)
 			else:
+				self.player_score += 2
 				self.expect_input('{0} rolled doubles.  Goes again'.format(
 					self.players[self.next_player]))
 		else:
@@ -156,6 +160,10 @@ class Monopoly:
 		if self.peek_line() == 'You pass === GO === and get $200':
 			self.get_line()
 			response['passed_go'] = True
+			self.pass_go_count += 1
+			if self.pass_go_count == 5:
+				self.state = states.GameState.game_over
+				return
 		re_template = "That puts you on ([A-Za-z \(\)\.\=&]+)"
 		inp = self.get_line()
 		m = re.match(re_template, inp)
@@ -164,10 +172,12 @@ class Monopoly:
 		response['tile_type'] = (tile_type, board.Board.TileType.tile_names[tile_type])
 		response['location'] = m.group(1)
 		if tile_type == board.Board.TileType.regular:
+			self.player_score += 1
 			re_template = 'That would cost \$([0-9]+)'
 			inp = self.get_line()
 			m = re.match(re_template, inp)
 			if m:
+				self.player_score += 1
 				response['cost'] = int(m.group(1))
 				self.expect_input('Do you want to buy?')
 				self.state = states.GameState.buy_property_prompt
@@ -183,24 +193,29 @@ class Monopoly:
 					assert(m)
 					response['rent'] = int(m.group(1))
 				else:
+					self.player_score += 1
 					response['already_owned'] = True
 				self.end_turn()
 		# elif tile_type == Board.TileType.go:
 		# 	pass
 		elif tile_type == board.Board.TileType.chest:
+			self.player_score += 1
 			self.state = states.GameState.open_card_prompt
 		elif tile_type == board.Board.TileType.income_tax:
 			self.expect_input('Do you wish to lose 10%% of your total worth or $200?')
 			self.state = states.GameState.income_tax_prompt
 		elif tile_type == board.Board.TileType.safe_place:
+			self.player_score += 1
 			self.state = states.GameState.player_turn
 			self.expect_input('That is a safe place')
 			self.end_turn()
 		elif tile_type == board.Board.TileType.luxury_tax:
+			self.player_score -= 1
 			self.state = states.GameState.player_turn
 			self.expect_input('You lose $75')
 			self.end_turn()
 		elif tile_type == board.Board.TileType.go_to_jail:
+			self.player_score -= 1
 			self.state = states.GameState.player_turn
 			self.end_turn()
 		else:

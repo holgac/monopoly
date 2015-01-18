@@ -11,10 +11,20 @@
 		<div class="container">
 			<span data-gamestate="InitialState">
 				<div class="page-header">
-					<button class="btn btn-success" data-newstate="CreateGameState">Create Game</button>
-					<button class="btn btn-success" data-newstate="LobbyState">Go To Lobby</button>
+					<center>
+						<button class="btn btn-success" data-newstate="CreateGameState">Create Game</button>
+					</center>
+					<!-- <button class="btn btn-success" data-newstate="LobbyState">Go To Lobby</button> -->
 				</div>
-				TEST
+				The aim of this game is to loop around in monopoly board 5 times without being in debt.
+				<ul>
+					<li>No information regarding your current holdings or money will be provided</li>
+					<li>You will try to buy every single property</li>
+					<li>The game is over when you pass Starting tile 5th time</li>
+					<li>Your score is calculated using your holdings when you finish the game</li>
+					<li>If you ever try to spend more money than you have, the game is over.</li>
+					<li>Try to get as much score as you can!</li>
+				</ul>
 			</span>
 			<span data-gamestate="CreateGameState">
 				Please wait...
@@ -81,6 +91,24 @@
 				<button class="btn btn-success" data-sendevent="open_card">
 					Open Card
 				</button>
+			</span>
+			<span data-gamestate="IncomeTaxPromptState">
+				You rolled <span data-specialfield data-fieldname='die'></span>.<br />
+				You are at <span data-specialfield data-fieldname='location'></span>.<br />
+				Lose 10 percent of your total worth, or 200 dollars?<br />
+				<button class="btn btn-success" data-sendevent="open_card" data-eventparam='[true]'>
+					10 percent
+				</button>
+				<button class="btn btn-success" data-sendevent="open_card" data-eventparam='[false]'>
+					200 dollars
+				</button>
+			</span>
+			<span data-gamestate="GameOverState">
+				The game is over <br />
+				You have either spent more than you should have, <br />
+				Or you have passed starting 5 times. <br />
+				The game is over. <br />
+				You have accumulated <span data-specialfield data-fieldname='player_score'></span> points.<br />
 			</span>
 		</div>
 		<script type="text/javascript" src="{% static 'js/underscore.js' %}" ></script>

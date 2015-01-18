@@ -47,14 +47,16 @@ class EventResponse:
 			# TODO: remove
 			resp['new_state_str'] = states.GameState.state_names[e.new_state]
 			resp['next_player'] = e.next_player
+			resp['player_score'] = e.player_score
 			resp['response'] = e.response
 			return resp
-	def __init__(self, event, response, success=True, new_state=None, next_player=None):
+	def __init__(self, event, response, success=True, new_state=None, next_player=None, player_score=0):
 		self.event = event
 		self.response = response
 		self.success = success
 		self.new_state = new_state
 		self.next_player = next_player
+		self.player_score = player_score
 	def __str__(self):
 		return 'EventResponse:\n\tFor:{0}\n\tsuccess:{1}\n\tNew state:{2}\n\tNext Player:{3}\n\tresponse:{4}'.format(
 			self.event.__class__.__name__, self.success, states.GameState.state_names[self.new_state],
@@ -193,10 +195,12 @@ class RollDieEvent(Event):
 		die = (int(die[0][:-1]), int(die[1]))
 		monopoly.last_die = die
 		if monopoly.peek_line() == 'That\'s 3 doubles.  You go to jail':
+			monopoly.player_score -= 1
 			response = {'die':die}
 			monopoly.end_turn()
 			monopoly.state = states.GameState.player_turn
 		else:
+			monopoly.player_score += 1
 			response = monopoly.handle_tile_visit()
 			response['die'] = die
 		return EventResponse(self, response)
@@ -215,12 +219,14 @@ class RollDieInJailEvent(Event):
 		monopoly.last_die = die
 		response = {}
 		if die[0] == die[1]:
+			monopoly.player_score += 5
 			monopoly.expect_input('Double roll gets you out.')
 			monopoly.just_got_out_of_jail = True
 			response = monopoly.handle_tile_visit()
 			response['success'] = True
 			response['die'] = die
 		elif monopoly.jail_turn_count == 3:
+			monopoly.player_score -= 2
 			monopoly.expect_input('Sorry, that doesn\'t get you out')
 			monopoly.expect_input('It\'s your third turn and you didn\'t roll doubles.  You have to pay $50')
 			monopoly.just_got_out_of_jail = True
@@ -228,6 +234,7 @@ class RollDieInJailEvent(Event):
 			response['success'] = True
 			response['die'] = die
 		else:
+			monopoly.player_score -= 1
 			monopoly.expect_input('Sorry, that doesn\'t get you out')
 			monopoly.end_turn()
 			response['success'] = False
@@ -239,6 +246,7 @@ class BuyPropertyResponseEvent(Event):
 		Event.__init__(self, Event.EventType.buy_property_response)
 		self.response = response
 	def run(self, monopoly):
+		monopoly.player_score += 5
 		monopoly.expect_state(states.GameState.buy_property_prompt)
 		if self.response:
 			monopoly.write('yes')
@@ -246,6 +254,8 @@ class BuyPropertyResponseEvent(Event):
 			monopoly.end_turn()
 		else:
 			raise AssertionError('Unhandled state response!')
+		if monopoly.peek_line() == 'that leaves you broke':
+			monopoly.state = states.GameState.game_over
 		return EventResponse(self, None, True)
 
 class IncomeTaxResponseEvent(Event):
@@ -262,6 +272,7 @@ class IncomeTaxResponseEvent(Event):
 		msg = monopoly.peek_line()
 		re_template = 'Good guess\. .*'
 		if re.match(re_template, msg):
+			monopoly.player_score += 5
 			monopoly.get_line()
 		monopoly.state = states.GameState.player_turn
 		monopoly.end_turn()
@@ -281,6 +292,7 @@ class OpenCardEvent(Event):
 			message.append(inp)
 			inp = monopoly.get_line()
 		if cards.Cards.has_prompt(message):
+			monopoly.player_score += 1
 			response = monopoly.handle_tile_visit(True)
 			response['message'] = message
 			response['state_name'] = states.GameState.state_names[monopoly.state]
@@ -288,6 +300,7 @@ class OpenCardEvent(Event):
 		else:
 			response = {'message':message}
 			if cards.Cards.extra_msg(message):
+				monopoly.player_score -= 1
 				re_template = 'You had ([0-9]+) Houses and ([0-9]+) Hotels, so that cost you \$([0-9]+)'
 				st = monopoly.get_line()
 				m = re.match(re_template, st)

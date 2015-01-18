@@ -27,6 +27,7 @@ class GameState:
 	open_card_prompt = 6
 	in_jail = 7
 	not_in_jail = 8
+	game_over = 9
 	state_names = {
 		uninitialized:'uninitialized',
 		starting:'starting',
@@ -37,4 +38,5 @@ class GameState:
 		open_card_prompt: 'open_card_prompt',
 		in_jail: 'in_jail',
 		not_in_jail: 'not_in_jail'
+		game_over: 'game_over'
 	}

@@ -106,6 +106,9 @@ class Agent(threading.Thread):
 				jresp = json.dumps(er, cls=events.EventResponse.Encoder)
 				print self.prelog, jresp
 				self.connection.sendall(jresp)
+				if er.new_state == states.GameState.game_over:
+					print self.prelog, 'Game over! quitting...'
+					self.game_factory.destroy_instance(self.game_id)
 				data = self.connection.recv(65536)
 				if not data:
 					break
