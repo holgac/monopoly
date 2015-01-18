@@ -254,7 +254,13 @@ class BuyPropertyResponseEvent(Event):
 			monopoly.end_turn()
 		else:
 			raise AssertionError('Unhandled state response!')
-		if monopoly.peek_line() == 'that leaves you broke':
+		try:
+			pkln = monopoly.peek_line()
+		except AssertionError:
+			pkln = None
+		if pkln == 'that leaves you broke':
+			monopoly.state = states.GameState.game_over
+		if pkln and re.match('That leaves you \$[0-9]+ in debt', pkln):
 			monopoly.state = states.GameState.game_over
 		return EventResponse(self, None, True)
 
