@@ -23,6 +23,7 @@
 					<li>The game is over when you pass Starting tile 5th time</li>
 					<li>Your score is calculated using your holdings when you finish the game</li>
 					<li>If you ever try to spend more money than you have, the game is over.</li>
+					<li>If you ever get in jail, the game is over.</li>
 					<li>Try to get as much score as you can!</li>
 				</ul>
 			</span>
@@ -96,10 +97,10 @@
 				You rolled <span data-specialfield data-fieldname='die'></span>.<br />
 				You are at <span data-specialfield data-fieldname='location'></span>.<br />
 				Lose 10 percent of your total worth, or 200 dollars?<br />
-				<button class="btn btn-success" data-sendevent="open_card" data-eventparam='[true]'>
+				<button class="btn btn-success" data-sendevent="income_tax_response" data-eventparam='[true]'>
 					10 percent
 				</button>
-				<button class="btn btn-success" data-sendevent="open_card" data-eventparam='[false]'>
+				<button class="btn btn-success" data-sendevent="income_tax_response" data-eventparam='[false]'>
 					200 dollars
 				</button>
 			</span>

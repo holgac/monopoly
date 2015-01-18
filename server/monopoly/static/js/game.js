@@ -315,6 +315,16 @@ function IncomeTaxPromptState() {
 	return self;
 };
 
+function GameOverState() {
+	var self = this;
+	StateBase(self);
+	self.initialize = function(monopoly, parent_span) {
+	};
+	self.uninitialize = function(monopoly, parent_span) {
+	};
+	return self;
+};
+
 monopoly = new function() {
 	var self = this;
 	// self.states = []
