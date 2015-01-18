@@ -10,9 +10,18 @@ def index(request):
 def cors(request):
 	bdy = json.loads(request.body)
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	port = 3002
+	port = 3001
 	server_address = ('huseyinolgac.com', port)
-	sock.connect(server_address)
+	connected = False
+	while not connected:
+		try:
+			print 'connecting to',port
+			server_address = ('huseyinolgac.com', port)
+			sock.connect(server_address)
+			print 'connected to',port
+			connected = True
+		except:
+			port += 1
 	sock.sendall(json.dumps(bdy))
 	resp = sock.recv(65536)
 	sock.close();

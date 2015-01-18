@@ -17,7 +17,7 @@
 
 
 import inspect, re, sys, threading, json, socket
-import monopoly, events
+import monopoly, events, states
 
 class GameFactory(object):
 	def __init__(self, game_class):
@@ -35,7 +35,12 @@ class GameFactory(object):
 		self.games[game_id].kill()
 		del self.games[game_id]
 	def get_ids(self):
-		return self.games.keys()
+		keys = []
+		for gameid in self.games:
+			game = self.games[gameid]
+			if game.state == states.GameState.uninitialized:
+				keys.append(gameid)
+		return keys
 
 class EventFactory(object):
 	def __init__(self):
@@ -72,6 +77,10 @@ class Agent(threading.Thread):
 						return
 					print self.prelog, 'Joined game with id {0}'.format(self.game_id)
 					self.monop = self.game_factory.get_instance(self.game_id)
+					if 'get_players' in req:
+						print self.prelog, 'Getting players of game {0}'.format(self.game_id)
+						self.connection.sendall(json.dumps({'success':True, 'players':self.monop.players}))
+						return
 				else:
 					if 'get_list' in req:
 						print self.prelog, 'Getting game list'
@@ -137,9 +146,15 @@ class GameServer(object):
 	def run(self, port=3001):
 		print 'trying to run'
 		# TODO: change bind address to localhost to prevent external connections
-		self.sock.bind(('0.0.0.0', port))
+		connected = False
+		while not connected:
+			try:
+				self.sock.bind(('0.0.0.0', port))
+				connected = True
+			except:
+				port += 1
 		self.sock.listen(10)
-		print 'listening'
+		print 'listening on', port
 		while True:
 			connection, client_address = self.sock.accept()
 			print 'a client!'

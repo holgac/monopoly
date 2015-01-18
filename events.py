@@ -32,6 +32,7 @@ class Event:
 		roll_die_in_jail = 8
 		detect_state = 9
 		get_holdings = 10
+		get_status = 11
 	def __init__(self, event_type):
 		self.event_type = event_type
 
@@ -79,7 +80,7 @@ class RemovePlayerEvent(Event):
 		del monopoly.players[monopoly.players.index(self.player_name)]
 		return EventResponse(self, None)
 	def __str__(self):
-		return 'StartGameEvent'
+		return 'RemovePlayerEvent'
 
 
 class StartGameEvent(Event):
@@ -96,6 +97,14 @@ class StartGameEvent(Event):
 		return EventResponse(self, None)
 	def __str__(self):
 		return 'StartGameEvent'
+
+class GetStatusEvent(Event):
+	def __init__(self):
+		Event.__init__(self, Event.EventType.get_status)
+	def run(self, monopoly):
+		return EventResponse(self, None)
+	def __str__(self):
+		return 'GetStatusEvent'
 
 class RollDieForTheFirstTimeEvent(Event):
 	def __init__(self):

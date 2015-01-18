@@ -19,6 +19,12 @@
 			<span data-gamestate="CreateGameState">
 				Please wait...
 			</span>
+			<span data-gamestate="LobbyState">
+				Games: <br />
+				<span data-currentgames></span>
+				<br />
+				<button class="btn btn-success" data-newstate="InitialState">Go back</button>
+			</span>
 			<span data-gamestate="JoinGameState">
 				Joining game #<span data-gamename></span>
 				<form>
@@ -34,8 +40,46 @@
 			<span data-gamestate="WaitForPlayersState">
 				Current players:
 				<span data-currentplayers></span>
-				<button class="btn btn-success" data-startgame>
+				<br>
+				<button class="btn btn-success" data-newstate="BeforeStartGameState">
 					Start Game!
+				</button>
+			</span>
+			<span data-gamestate="BeforeStartGameState">
+				Starting game, please wait...
+			</span>
+			<span data-gamestate="StartingState">
+				<span data-lastresults></span>
+				<button class="btn btn-success" data-sendevent="roll_die_for_the_first_time">
+					Roll Die To Detect Who Starts First
+				</button>
+			</span>
+			<span data-gamestate="PlayerTurnState">
+				Please wait...
+			</span>
+			<span data-gamestate="NotInJailState">
+				<span data-cardresponse></span><br />
+				<span data-specialfield data-fieldname='next_player'></span>'s turn.<br />
+				<button class="btn btn-success" data-sendevent="roll_die">
+					Roll Die!
+				</button>
+			</span>
+			<span data-gamestate="BuyPropertyPromptState">
+				You rolled <span data-specialfield data-fieldname='die'></span>.<br />
+				You are at <span data-specialfield data-fieldname='location'></span>.<br />
+				Would you like to buy it?<br />
+				<button class="btn btn-success" data-sendevent="buy_property_response" data-eventparam='[true]'>
+					Yes
+				</button>
+				<button class="btn btn-warning" data-sendevent="buy_property_response" data-eventparam='[false]'>
+					No
+				</button>
+			</span>
+			<span data-gamestate="OpenCardPromptState">
+				You rolled <span data-specialfield data-fieldname='die'></span>.<br />
+				You are at <span data-specialfield data-fieldname='location'></span>.<br />
+				<button class="btn btn-success" data-sendevent="open_card">
+					Open Card
 				</button>
 			</span>
 		</div>
