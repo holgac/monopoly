@@ -150,7 +150,7 @@ class DetectStateEvent(Event):
 		if m:
 			monopoly.jail_turn_count = int(m.group(1))
 			monopoly.get_line()
-			monopoly.state = states.GameState.in_jail
+			monopoly.state = states.GameState.game_over
 		else:
 			monopoly.state = states.GameState.not_in_jail
 		monopoly.expect_input('-- Command:')
