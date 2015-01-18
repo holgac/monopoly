@@ -37,6 +37,6 @@ class GameState:
 		income_tax_prompt:'income_tax_prompt',
 		open_card_prompt: 'open_card_prompt',
 		in_jail: 'in_jail',
-		not_in_jail: 'not_in_jail'
+		not_in_jail: 'not_in_jail',
 		game_over: 'game_over'
 	}
